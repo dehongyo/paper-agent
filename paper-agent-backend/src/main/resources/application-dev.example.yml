@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/paperagent
+    username: paperagent
+    password: ${PAPERAGENT_DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+  ai:
+    openai:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode
+      api-key: ${DASHSCOPE_API_KEY:}
+      chat:
+        options:
+          model: qwen-plus
+          temperature: 0.7
+      embedding:
+        options:
+          model: text-embedding-v4
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1024
+
+logging:
+  level:
+    com.paperagent: DEBUG
+    org.springframework.ai: INFO

@@ -1,0 +1,43 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+*.key
+*.pem
+*.p12
+*.jks
+credentials*
+secrets*
+
+# Local Spring profile with private API keys/passwords
+paper-agent-backend/src/main/resources/application-dev.yml
+paper-agent-backend/src/main/resources/application-*.local.yml
+
+# Build output
+**/target/
+**/dist/
+**/build/
+**/.gradle/
+
+# Frontend dependencies and caches
+**/node_modules/
+**/.vite/
+**/.turbo/
+
+# Runtime data
+logs/
+paper-agent-backend/uploads/
+*.log
+
+# Local agent/tool state
+.superpowers/
+.github/modernize/
+
+# IDE and OS files
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
