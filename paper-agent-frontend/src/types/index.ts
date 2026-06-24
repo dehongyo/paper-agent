@@ -53,10 +53,17 @@ export interface TraceableChatRequest {
   message: string;
   paperId?: number | null;
   scope: 'paper' | 'library';
+  sessionId?: number | null;
 }
 
 export interface TraceableChatResponse {
   answer: string;
+  evidence: EvidenceChunk[];
+}
+
+export interface TraceableChatStreamEvent {
+  type: 'answer' | 'evidence' | 'done';
+  content: string;
   evidence: EvidenceChunk[];
 }
 
@@ -75,6 +82,7 @@ export interface DiscoveryResult {
 export interface ChatRequest {
   message: string;
   paperId?: number | null;
+  sessionId?: number | null;
 }
 
 export interface ChatMessage {
@@ -84,6 +92,30 @@ export interface ChatMessage {
   timestamp: number;
   isStreaming?: boolean;
   evidence?: EvidenceChunk[];
+}
+
+export interface ChatSession {
+  id: number;
+  title: string;
+  scope: 'paper' | 'library';
+  paperId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatSessionCreateRequest {
+  title?: string | null;
+  scope: 'paper' | 'library';
+  paperId?: number | null;
+}
+
+export interface ChatMessageResponse {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  evidenceJson: string | null;
+  messageOrder: number;
+  createdAt: string;
 }
 
 export type CitationStyle = 'gbt7714' | 'apa' | 'ieee';

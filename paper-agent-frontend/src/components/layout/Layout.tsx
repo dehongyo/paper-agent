@@ -15,7 +15,7 @@ export function Layout() {
       <Sidebar currentView={currentView} onNavigate={setCurrentView} />
       <main className="flex-1 overflow-hidden">
         {currentView === 'chat' && <ChatWindow />}
-        {currentView === 'library' && <LibraryPage />}
+        {currentView === 'library' && <LibraryPage onNavigate={setCurrentView} />}
         {currentView === 'writing' && <WritingPage />}
         {currentView === 'discovery' && <DiscoveryPage />}
       </main>

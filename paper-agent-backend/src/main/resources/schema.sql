@@ -33,3 +33,30 @@ CREATE TABLE IF NOT EXISTS paper_chunks (
 -- Vector index
 CREATE INDEX IF NOT EXISTS idx_paper_chunks_embedding
     ON paper_chunks USING hnsw (embedding vector_cosine_ops);
+
+-- Chat sessions table
+CREATE TABLE IF NOT EXISTS chat_sessions (
+    id          BIGSERIAL PRIMARY KEY,
+    title       VARCHAR(200) NOT NULL,
+    scope       VARCHAR(20) NOT NULL,
+    paper_id    BIGINT REFERENCES papers(id) ON DELETE CASCADE,
+    created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Chat messages table
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id            BIGSERIAL PRIMARY KEY,
+    session_id    BIGINT NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+    role          VARCHAR(20) NOT NULL,
+    content       TEXT NOT NULL,
+    evidence_json TEXT,
+    message_order INTEGER NOT NULL,
+    created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_scope_paper_updated
+    ON chat_sessions (scope, paper_id, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session_order
+    ON chat_messages (session_id, message_order ASC);

@@ -1,5 +1,8 @@
 import type {
   ChatRequest,
+  ChatMessageResponse,
+  ChatSession,
+  ChatSessionCreateRequest,
   DiscoveryResult,
   PaperListItem,
   PaperSummary,
@@ -8,6 +11,7 @@ import type {
   SemanticSearchResponse,
   TraceableChatRequest,
   TraceableChatResponse,
+  TraceableChatStreamEvent,
   WritingRequest,
   WritingResponse,
 } from '../types';
@@ -78,6 +82,32 @@ export async function traceableChat(req: TraceableChatRequest): Promise<Traceabl
   });
 }
 
+export async function getChatSessions(params: {
+  scope: 'paper' | 'library';
+  paperId?: number | null;
+}): Promise<ChatSession[]> {
+  const search = new URLSearchParams();
+  search.set('scope', params.scope);
+  if (params.paperId != null) search.set('paperId', String(params.paperId));
+  return request<ChatSession[]>(`/chat/sessions?${search.toString()}`);
+}
+
+export async function createChatSession(req: ChatSessionCreateRequest): Promise<ChatSession> {
+  return request<ChatSession>('/chat/sessions', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+}
+
+export async function getChatMessages(sessionId: number): Promise<ChatMessageResponse[]> {
+  return request<ChatMessageResponse[]>(`/chat/sessions/${sessionId}/messages`);
+}
+
+export async function deleteChatSession(sessionId: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/chat/sessions/${sessionId}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Delete session failed: ${res.status}`);
+}
+
 export async function discoverPapers(params: {
   query: string;
   source: 'all' | 'arxiv' | 'semantic-scholar';
@@ -129,15 +159,116 @@ export function streamChat(
       const reader = res.body?.getReader();
       if (!reader) throw new Error('No response body');
       const decoder = new TextDecoder();
+      let eventBuffer = '';
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        onChunk(decoder.decode(value, { stream: true }));
+        const text = decoder.decode(value, { stream: true });
+        const shouldParseAsSse =
+          eventBuffer.length > 0 || text.includes('data:') || text.includes('\n\n') || text.includes('\r\n\r\n');
+        if (shouldParseAsSse) {
+          eventBuffer = readSseEvents(eventBuffer + text, onChunk);
+        } else {
+          onChunk(text);
+        }
       }
+      const trailing = decoder.decode();
+      if (trailing) eventBuffer = readSseEvents(eventBuffer + trailing, onChunk);
+      flushSseEvents(eventBuffer, onChunk);
       onDone();
     })
     .catch((err) => {
       if (err.name !== 'AbortError') onError(err);
     });
   return controller;
+}
+
+export function streamTraceableChat(
+  req: TraceableChatRequest,
+  onChunk: (text: string) => void,
+  onEvidence: (evidence: TraceableChatStreamEvent['evidence']) => void,
+  onDone: () => void,
+  onError: (err: Error) => void
+): AbortController {
+  const controller = new AbortController();
+  fetch(`${BASE_URL}/chat/rag/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+    signal: controller.signal,
+  })
+    .then(async (res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No response body');
+      const decoder = new TextDecoder();
+      let eventBuffer = '';
+      let completed = false;
+      const finish = () => {
+        if (completed) return;
+        completed = true;
+        onDone();
+      };
+      const handleEvent = (data: string) => {
+        if (!data || data === '[DONE]') return;
+        const event = JSON.parse(data) as TraceableChatStreamEvent;
+        if (event.type === 'answer') onChunk(event.content);
+        if (event.type === 'evidence') onEvidence(event.evidence);
+        if (event.type === 'done') finish();
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        eventBuffer = readSseEvents(eventBuffer + decoder.decode(value, { stream: true }), handleEvent);
+      }
+      const trailing = decoder.decode();
+      if (trailing) eventBuffer = readSseEvents(eventBuffer + trailing, handleEvent);
+      flushSseEvents(eventBuffer, handleEvent);
+      finish();
+    })
+    .catch((err) => {
+      if (err.name !== 'AbortError') onError(err);
+    });
+  return controller;
+}
+
+function readSseEvents(buffer: string, onEvent: (data: string) => void): string {
+  let remaining = buffer;
+  let boundary = findSseBoundary(remaining);
+  while (boundary) {
+    const rawEvent = remaining.slice(0, boundary.index);
+    remaining = remaining.slice(boundary.index + boundary.length);
+    emitSseEvent(rawEvent, onEvent);
+    boundary = findSseBoundary(remaining);
+  }
+  return remaining;
+}
+
+function flushSseEvents(buffer: string, onEvent: (data: string) => void) {
+  if (buffer.trim()) emitSseEvent(buffer, onEvent);
+}
+
+function emitSseEvent(rawEvent: string, onEvent: (data: string) => void) {
+  const lines = rawEvent.split(/\r?\n/);
+  const dataLines = lines.filter((line) => line.startsWith('data:'));
+  if (dataLines.length === 0) {
+    const text = rawEvent.trim();
+    if (text) onEvent(text);
+    return;
+  }
+
+  const data = dataLines
+    .map((line) => line.slice(5).replace(/^ /, ''))
+    .join('\n');
+  if (data) onEvent(data);
+}
+
+function findSseBoundary(buffer: string): { index: number; length: number } | null {
+  const lf = buffer.indexOf('\n\n');
+  const crlf = buffer.indexOf('\r\n\r\n');
+  if (lf === -1 && crlf === -1) return null;
+  if (lf === -1) return { index: crlf, length: 4 };
+  if (crlf === -1) return { index: lf, length: 2 };
+  return lf < crlf ? { index: lf, length: 2 } : { index: crlf, length: 4 };
 }

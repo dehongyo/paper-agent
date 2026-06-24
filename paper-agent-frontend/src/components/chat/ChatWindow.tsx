@@ -13,6 +13,7 @@ export function ChatWindow() {
     setSelectedPaper,
     scope,
     setScope,
+    activeSessionTitle,
   } = useChatStore();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -58,6 +59,12 @@ export function ChatWindow() {
               >
                 <X size={14} />
               </button>
+            </div>
+          )}
+
+          {activeSessionTitle && (
+            <div className="min-w-0 flex-1 text-right text-sm font-semibold text-[var(--color-ink-soft)]">
+              <span className="line-clamp-1">{activeSessionTitle}</span>
             </div>
           )}
         </div>

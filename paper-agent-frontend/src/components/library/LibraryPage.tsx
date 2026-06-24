@@ -2,12 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { PaperCard } from './PaperCard';
 import { PaperEditPanel } from './PaperEditPanel';
 import { PaperUpload } from './PaperUpload';
-import { deletePaper, getPaper, getPapers, getTags, updatePaper } from '../../api/client';
+import { deletePaper, getChatSessions, getPaper, getPapers, getTags, updatePaper } from '../../api/client';
 import { useChatStore } from '../../store/chatStore';
-import type { PaperListItem, PaperSummary, PaperUpdateRequest } from '../../types';
-import { Filter, Loader2, Library, RotateCcw, Search } from 'lucide-react';
+import type { ChatSession, PaperListItem, PaperSummary, PaperUpdateRequest } from '../../types';
+import type { View } from '../layout/Layout';
+import { Filter, Loader2, Library, MessageCircle, Plus, RotateCcw, Search, X } from 'lucide-react';
 
-export function LibraryPage() {
+interface Props {
+  onNavigate: (view: View) => void;
+}
+
+export function LibraryPage({ onNavigate }: Props) {
   const [papers, setPapers] = useState<PaperListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -17,7 +22,11 @@ export function LibraryPage() {
   const [tag, setTag] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [editingPaper, setEditingPaper] = useState<PaperSummary | null>(null);
-  const setSelectedPaper = useChatStore((state) => state.setSelectedPaper);
+  const [chatPaper, setChatPaper] = useState<PaperListItem | null>(null);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const openSession = useChatStore((state) => state.openSession);
+  const createAndOpenSession = useChatStore((state) => state.createAndOpenSession);
 
   const loadPapers = useCallback(async (filters = { query, status, tag }) => {
     try {
@@ -50,7 +59,36 @@ export function LibraryPage() {
     }, 0);
   }, [loadPapers, loadTags]);
 
-  const handleChat = (paperId: number) => setSelectedPaper(paperId);
+  const handleChat = async (paperId: number) => {
+    const paper = papers.find((item) => item.id === paperId);
+    if (!paper) return;
+    setChatPaper(paper);
+    setIsLoadingSessions(true);
+    try {
+      setChatSessions(await getChatSessions({ scope: 'paper', paperId }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '加载历史对话失败');
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  };
+
+  const enterSession = async (session: ChatSession) => {
+    await openSession(session);
+    setChatPaper(null);
+    onNavigate('chat');
+  };
+
+  const createSession = async () => {
+    if (!chatPaper) return;
+    await createAndOpenSession({
+      title: `${chatPaper.title} 对话`,
+      scope: 'paper',
+      paperId: chatPaper.id,
+    });
+    setChatPaper(null);
+    onNavigate('chat');
+  };
 
   const handleEdit = async (paperId: number) => {
     try {
@@ -208,6 +246,65 @@ export function LibraryPage() {
             onClose={() => setEditingPaper(null)}
             onSave={handleSave}
           />
+        )}
+
+        {chatPaper && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 px-4 backdrop-blur-sm">
+            <div className="surface-solid w-full max-w-xl p-5 shadow-[var(--shadow-lg)]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="eyebrow">PAPER CHAT HISTORY</p>
+                  <h2 className="mt-1 line-clamp-2 text-xl font-bold text-[var(--color-ink)]">{chatPaper.title}</h2>
+                  <p className="mt-2 text-sm text-[var(--color-ink-mute)]">选择一个历史会话继续，或新建会话。</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setChatPaper(null)}
+                  className="icon-button"
+                  aria-label="关闭历史对话"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-2">
+                {isLoadingSessions && (
+                  <div className="flex items-center justify-center gap-2 py-8 text-sm text-[var(--color-ink-mute)]">
+                    <Loader2 size={18} className="animate-spin" />
+                    加载历史对话...
+                  </div>
+                )}
+
+                {!isLoadingSessions && chatSessions.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-white/54 px-4 py-8 text-center text-sm text-[var(--color-ink-mute)]">
+                    这篇论文还没有历史对话。
+                  </div>
+                )}
+
+                {!isLoadingSessions && chatSessions.map((session) => (
+                  <button
+                    key={session.id}
+                    type="button"
+                    onClick={() => void enterSession(session)}
+                    className="flex w-full items-center justify-between gap-3 rounded-lg border border-[var(--color-border)] bg-white/68 px-4 py-3 text-left transition hover:border-[var(--color-primary)] hover:bg-white"
+                  >
+                    <span>
+                      <span className="block text-sm font-semibold text-[var(--color-ink)]">{session.title}</span>
+                      <span className="mt-1 block text-xs text-[var(--color-ink-mute)]">
+                        最近更新 {new Date(session.updatedAt).toLocaleString('zh-CN')}
+                      </span>
+                    </span>
+                    <MessageCircle size={17} className="text-[var(--color-primary)]" />
+                  </button>
+                ))}
+              </div>
+
+              <button type="button" onClick={() => void createSession()} className="primary-button mt-5 w-full">
+                <Plus size={16} />
+                新建会话
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
