@@ -211,7 +211,7 @@ export function LibraryPage({ onNavigate }: Props) {
         {error && (
           <div className="surface-solid py-12 text-center">
             <p className="text-sm font-semibold text-red-600">{error}</p>
-            <button onClick={() => void loadPapers()} className="mt-3 text-sm font-semibold text-[var(--color-primary)]">
+            <button onClick={() => void loadPapers()} className="mt-3 text-sm font-bold text-[var(--color-ink)]">
               重试
             </button>
           </div>
@@ -220,7 +220,7 @@ export function LibraryPage({ onNavigate }: Props) {
         {!isLoading && !error && papers.length === 0 && (
           <div className="surface flex flex-col items-center gap-3 py-16 text-[var(--color-ink-mute)]">
             <Library size={48} strokeWidth={1.2} />
-            <p className="font-semibold text-[var(--color-ink)]">还没有符合条件的论文</p>
+            <p className="font-bold text-[var(--color-ink)]">还没有符合条件的论文</p>
             <p className="text-sm">上传论文或调整筛选条件后再试。</p>
           </div>
         )}
@@ -254,7 +254,7 @@ export function LibraryPage({ onNavigate }: Props) {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="eyebrow">PAPER CHAT HISTORY</p>
-                  <h2 className="mt-1 line-clamp-2 text-xl font-bold text-[var(--color-ink)]">{chatPaper.title}</h2>
+                  <h2 className="mt-1 line-clamp-2 text-xl font-extrabold text-[var(--color-ink)]">{chatPaper.title}</h2>
                   <p className="mt-2 text-sm text-[var(--color-ink-mute)]">选择一个历史会话继续，或新建会话。</p>
                 </div>
                 <button
@@ -276,7 +276,7 @@ export function LibraryPage({ onNavigate }: Props) {
                 )}
 
                 {!isLoadingSessions && chatSessions.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-white/54 px-4 py-8 text-center text-sm text-[var(--color-ink-mute)]">
+                  <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-primary-soft)] px-4 py-8 text-center text-sm text-[var(--color-ink-mute)]">
                     这篇论文还没有历史对话。
                   </div>
                 )}
@@ -286,15 +286,15 @@ export function LibraryPage({ onNavigate }: Props) {
                     key={session.id}
                     type="button"
                     onClick={() => void enterSession(session)}
-                    className="flex w-full items-center justify-between gap-3 rounded-lg border border-[var(--color-border)] bg-white/68 px-4 py-3 text-left transition hover:border-[var(--color-primary)] hover:bg-white"
+                    className="flex w-full items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--surface)] px-4 py-3 text-left transition hover:border-[var(--color-border-strong)] hover:bg-[var(--color-primary-soft)]"
                   >
                     <span>
-                      <span className="block text-sm font-semibold text-[var(--color-ink)]">{session.title}</span>
+                      <span className="block text-sm font-bold text-[var(--color-ink)]">{session.title}</span>
                       <span className="mt-1 block text-xs text-[var(--color-ink-mute)]">
                         最近更新 {new Date(session.updatedAt).toLocaleString('zh-CN')}
                       </span>
                     </span>
-                    <MessageCircle size={17} className="text-[var(--color-primary)]" />
+                    <MessageCircle size={17} className="text-[var(--color-ink)]" />
                   </button>
                 ))}
               </div>

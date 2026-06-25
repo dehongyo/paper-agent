@@ -2,7 +2,13 @@ import { useEffect, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { useChatStore } from '../../store/chatStore';
-import { BookOpen, Library, MessageCircle, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Library, MessageCircle, Search, X } from 'lucide-react';
+
+const quickPrompts = [
+  { icon: BookOpen, label: '总结这篇论文的核心观点', prompt: '请总结这篇论文的核心观点和主要贡献。' },
+  { icon: Search, label: '论文中使用了哪些方法', prompt: '这篇论文使用了哪些研究方法？请列举并简要说明。' },
+  { icon: Library, label: '对比相关研究', prompt: '请对比本文与相关领域其他研究的异同。' },
+];
 
 export function ChatWindow() {
   const {
@@ -23,15 +29,13 @@ export function ChatWindow() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-[var(--color-border)] bg-white/58 px-5 py-3 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3">
-          <div className="flex rounded-lg border border-[var(--color-border)] bg-black/[0.035] p-1">
+      <header className="chat-header">
+        <div className="chat-header-inner">
+          <div className="scope-switcher">
             <button
               type="button"
               onClick={() => setScope('paper')}
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition-all ${
-                scope === 'paper' ? 'bg-white text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-ink-mute)]'
-              }`}
+              className={`scope-button ${scope === 'paper' ? 'scope-button-active' : ''}`}
             >
               <BookOpen size={15} />
               当前论文
@@ -39,9 +43,7 @@ export function ChatWindow() {
             <button
               type="button"
               onClick={() => setScope('library')}
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition-all ${
-                scope === 'library' ? 'bg-white text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-ink-mute)]'
-              }`}
+              className={`scope-button ${scope === 'library' ? 'scope-button-active' : ''}`}
             >
               <Library size={15} />
               全部文献库
@@ -49,12 +51,12 @@ export function ChatWindow() {
           </div>
 
           {selectedPaperId && (
-            <div className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white/70 px-3 py-1.5 text-sm text-[var(--color-ink-soft)] shadow-sm">
-              <span className="font-semibold text-[var(--color-primary)]">论文 #{selectedPaperId}</span>
+            <div className="flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--color-ink-soft)] shadow-sm">
+              <span className="font-bold text-[var(--color-ink)]">论文 #{selectedPaperId}</span>
               <button
                 type="button"
                 onClick={() => setSelectedPaper(null)}
-                className="rounded-md p-0.5 text-[var(--color-ink-mute)] hover:bg-black/5 hover:text-[var(--color-ink)]"
+                className="rounded-full p-0.5 text-[var(--color-ink-mute)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-ink)]"
                 aria-label="取消当前论文"
               >
                 <X size={14} />
@@ -63,30 +65,50 @@ export function ChatWindow() {
           )}
 
           {activeSessionTitle && (
-            <div className="min-w-0 flex-1 text-right text-sm font-semibold text-[var(--color-ink-soft)]">
+            <div className="min-w-0 flex-1 text-right text-sm font-bold text-[var(--color-ink-soft)]">
               <span className="line-clamp-1">{activeSessionTitle}</span>
             </div>
           )}
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-7">
         <div className="mx-auto h-full max-w-5xl">
           {messages.length === 0 ? (
             <div className="empty-hero">
               <div className="empty-hero-panel">
-                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-[18px] border border-[var(--color-border)] bg-white/74 text-[var(--color-primary)] shadow-[var(--shadow-md)] backdrop-blur-xl">
-                  <MessageCircle size={28} />
+                <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--glass-border-strong)] bg-[var(--surface)] text-[var(--color-ink)] shadow-sm">
+                  <MessageCircle size={26} />
                 </div>
                 <p className="eyebrow">RESEARCH COPILOT</p>
-                <h2 className="mt-2 text-[34px] font-bold leading-tight tracking-tight text-[var(--color-ink)]">和论文自然对话</h2>
-                <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-mute)]">
+                <h2 className="mt-2 text-[38px] font-extrabold leading-tight tracking-tight text-[var(--color-ink)]">
+                  和论文自然对话
+                </h2>
+                <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-[var(--color-ink-mute)]">
                   围绕当前论文或全部文献库提问，答案会附带可追溯来源证据。
                 </p>
+
+                <div className="quick-chips">
+                  {quickPrompts.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => sendMessage(item.prompt)}
+                        className="quick-chip"
+                      >
+                        <Icon size={14} />
+                        {item.label}
+                        <ArrowRight size={12} />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           ) : (
-            <div className="py-4">
+            <div className="py-6">
               {messages.map((msg) => (
                 <ChatMessage key={msg.id} message={msg} onSelectPaper={setSelectedPaper} />
               ))}

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "check:layout": "node scripts/check-icon-text-layout.mjs",
+    "check:style": "node scripts/check-agentic-design.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

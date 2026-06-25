@@ -22,7 +22,7 @@ export function ExportPanel({ markdown, latex }: Props) {
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <div className="rounded-lg border border-[var(--color-border)] bg-white/58 p-3">
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--surface)] p-3">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-bold text-[var(--color-ink)]">Markdown</span>
             <button type="button" onClick={() => void copy(markdown)} className="icon-button" aria-label="复制 Markdown">
@@ -32,7 +32,7 @@ export function ExportPanel({ markdown, latex }: Props) {
           <pre className="max-h-52 overflow-auto whitespace-pre-wrap text-xs leading-5 text-[var(--color-ink-soft)]">{markdown || '暂无 Markdown 导出内容。'}</pre>
         </div>
 
-        <div className="rounded-lg border border-[var(--color-border)] bg-white/58 p-3">
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--surface)] p-3">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-bold text-[var(--color-ink)]">LaTeX</span>
             <button type="button" onClick={() => void copy(latex)} className="icon-button" aria-label="复制 LaTeX">

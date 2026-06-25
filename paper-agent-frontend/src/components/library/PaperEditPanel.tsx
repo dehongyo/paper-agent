@@ -45,7 +45,7 @@ export function PaperEditPanel({ paper, isSaving, onClose, onSave }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/24 backdrop-blur-sm" onClick={onClose}>
-      <aside className="flex h-full w-full max-w-2xl flex-col border-l border-[var(--color-border)] bg-white/88 shadow-[var(--shadow-lg)] backdrop-blur-2xl" onClick={(event) => event.stopPropagation()}>
+      <aside className="flex h-full w-full max-w-2xl flex-col border-l border-[var(--color-border)] bg-[var(--surface)] shadow-[var(--shadow-lg)] backdrop-blur-2xl" onClick={(event) => event.stopPropagation()}>
         <header className="flex items-center gap-3 border-b border-[var(--color-border)] px-6 py-5">
           <div>
             <p className="eyebrow">EDIT PAPER</p>
@@ -104,7 +104,7 @@ export function PaperEditPanel({ paper, isSaving, onClose, onSave }: Props) {
           {error && <p className="mt-4 text-sm font-semibold text-red-600">{error}</p>}
         </div>
 
-        <footer className="flex items-center justify-end gap-3 border-t border-[var(--color-border)] bg-white/62 px-6 py-4">
+        <footer className="flex items-center justify-end gap-3 border-t border-[var(--color-border)] bg-[var(--color-primary-soft)] px-6 py-4">
           <button type="button" onClick={onClose} className="secondary-button px-4">
             取消
           </button>

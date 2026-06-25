@@ -53,7 +53,7 @@ export function PaperPicker({ scope, selectedPaperIds, onScopeChange, onSelectio
           className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
             scope === 'library'
               ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]'
-              : 'border-[var(--color-border)] bg-white/60 text-[var(--color-ink-soft)]'
+              : 'border-[var(--color-border)] bg-[var(--surface)] text-[var(--color-ink-soft)]'
           }`}
         >
           全部文献
@@ -64,7 +64,7 @@ export function PaperPicker({ scope, selectedPaperIds, onScopeChange, onSelectio
           className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
             scope === 'selected'
               ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]'
-              : 'border-[var(--color-border)] bg-white/60 text-[var(--color-ink-soft)]'
+              : 'border-[var(--color-border)] bg-[var(--surface)] text-[var(--color-ink-soft)]'
           }`}
         >
           手动选择
@@ -84,7 +84,7 @@ export function PaperPicker({ scope, selectedPaperIds, onScopeChange, onSelectio
               key={paper.id}
               type="button"
               onClick={() => togglePaper(paper.id)}
-              className="flex w-full items-start gap-3 rounded-lg border border-[var(--color-border)] bg-white/58 p-3 text-left transition hover:bg-white"
+              className="flex w-full items-start gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--surface)] p-3 text-left transition hover:bg-[var(--color-primary-soft)]"
             >
               <span
                 className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${

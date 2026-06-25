@@ -11,14 +11,16 @@ export function Layout() {
   const [currentView, setCurrentView] = useState<View>('chat');
 
   return (
-    <div className="app-shell flex h-screen">
-      <Sidebar currentView={currentView} onNavigate={setCurrentView} />
-      <main className="flex-1 overflow-hidden">
-        {currentView === 'chat' && <ChatWindow />}
-        {currentView === 'library' && <LibraryPage onNavigate={setCurrentView} />}
-        {currentView === 'writing' && <WritingPage />}
-        {currentView === 'discovery' && <DiscoveryPage />}
-      </main>
+    <div className="app-shell">
+      <div className="app-frame">
+        <Sidebar currentView={currentView} onNavigate={setCurrentView} />
+        <main className="main-canvas">
+          {currentView === 'chat' && <ChatWindow />}
+          {currentView === 'library' && <LibraryPage onNavigate={setCurrentView} />}
+          {currentView === 'writing' && <WritingPage />}
+          {currentView === 'discovery' && <DiscoveryPage />}
+        </main>
+      </div>
     </div>
   );
 }

@@ -19,7 +19,7 @@ export function WritingEvidencePanel({ evidence }: Props) {
       ) : (
         <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
           {evidence.map((item) => (
-            <article key={item.chunkId} className="rounded-lg border border-[var(--color-border)] bg-white/62 p-3">
+            <article key={item.chunkId} className="rounded-lg border border-[var(--color-border)] bg-[var(--surface)] p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="pill bg-[var(--color-primary-soft)] text-[var(--color-primary)]">[{item.index}]</span>
                 <span className="text-xs text-[var(--color-ink-mute)]">{Math.round(item.similarity * 100)}%</span>

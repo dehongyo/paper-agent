@@ -25,7 +25,7 @@ export function ChatMessage({ message, onSelectPaper }: Props) {
           {message.content ? (
             <ReactMarkdown>{message.content}</ReactMarkdown>
           ) : message.isStreaming ? (
-            <span className="inline-block animate-pulse text-[var(--color-primary)]">生成中...</span>
+            <span className="inline-block animate-pulse text-[var(--color-ink-soft)]">生成中...</span>
           ) : (
             <span className="italic text-[var(--color-ink-mute)]">暂无内容</span>
           )}

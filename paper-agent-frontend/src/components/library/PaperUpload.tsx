@@ -63,11 +63,11 @@ export function PaperUpload({ onUploaded }: Props) {
         onDragOver={(event) => event.preventDefault()}
       >
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-primary-soft)] text-[var(--color-ink)]">
             <Upload size={18} />
           </div>
           <div>
-            <h2 className="text-lg font-bold tracking-tight">上传 PDF 论文</h2>
+            <h2 className="text-lg font-extrabold tracking-tight">上传 PDF 论文</h2>
             <p className="text-xs text-[var(--color-ink-mute)]">上传后会自动解析、向量化并生成摘要。</p>
           </div>
           <button type="button" onClick={() => setOpen(false)} className="icon-button ml-auto" aria-label="关闭上传窗口">
@@ -75,11 +75,11 @@ export function PaperUpload({ onUploaded }: Props) {
           </button>
         </div>
 
-        <div className="flex flex-col items-center gap-4 rounded-lg border border-dashed border-[var(--color-border-strong)] bg-black/[0.025] p-8">
+        <div className="flex flex-col items-center gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-strong)] bg-[var(--color-primary-soft)] p-8">
           {selectedFile ? (
             <div className="flex max-w-full items-center gap-2 text-sm">
-              <FileText size={22} className="shrink-0 text-[var(--color-primary)]" />
-              <span className="truncate font-semibold">{selectedFile.name}</span>
+              <FileText size={22} className="shrink-0 text-[var(--color-ink)]" />
+              <span className="truncate font-bold">{selectedFile.name}</span>
               <span className="shrink-0 text-[var(--color-ink-mute)]">({(selectedFile.size / 1024 / 1024).toFixed(1)} MB)</span>
             </div>
           ) : (

@@ -13,7 +13,7 @@ export function ReferenceList({ references }: Props) {
       ) : (
         <ol className="mt-3 space-y-2">
           {references.map((reference) => (
-            <li key={`${reference.index}-${reference.paperId}`} className="rounded-lg border border-[var(--color-border)] bg-white/58 p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+            <li key={`${reference.index}-${reference.paperId}`} className="rounded-lg border border-[var(--color-border)] bg-[var(--surface)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
               {reference.formatted}
             </li>
           ))}

@@ -11,7 +11,7 @@ export function EvidenceList({ evidence, onSelectPaper }: Props) {
 
   return (
     <div className="mt-4 space-y-2 border-t border-[var(--color-border)] pt-3">
-      <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-ink-mute)]">
+      <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-ink-mute)]">
         <BookOpen size={14} />
         来源证据
       </div>
@@ -21,10 +21,10 @@ export function EvidenceList({ evidence, onSelectPaper }: Props) {
             key={item.chunkId}
             type="button"
             onClick={() => onSelectPaper?.(item.paperId)}
-            className="rounded-lg border border-[var(--color-border)] bg-black/[0.025] p-3 text-left transition hover:border-[var(--color-primary)] hover:bg-white"
+            className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-primary-soft)] p-3 text-left transition hover:border-[var(--color-border-strong)] hover:bg-[var(--surface)]"
           >
             <div className="flex items-start justify-between gap-3">
-              <span className="line-clamp-1 text-xs font-semibold text-[var(--color-ink)]">
+              <span className="line-clamp-1 text-xs font-bold text-[var(--color-ink)]">
                 {item.paperTitle} · 片段 {item.chunkIndex + 1}
               </span>
               <span className="inline-flex shrink-0 items-center gap-1 text-xs text-[var(--color-ink-mute)]">

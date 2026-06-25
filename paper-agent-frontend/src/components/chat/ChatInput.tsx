@@ -34,8 +34,8 @@ export function ChatInput({ onSend, isLoading }: Props) {
   };
 
   return (
-    <div className="border-t border-[var(--color-border)] bg-white/58 px-5 py-4 backdrop-blur-2xl">
-      <div className="mx-auto flex max-w-5xl items-end gap-3">
+    <div className="chat-composer">
+      <div className="chat-composer-inner">
         <textarea
           ref={textareaRef}
           value={input}
@@ -44,7 +44,7 @@ export function ChatInput({ onSend, isLoading }: Props) {
           placeholder={isLoading ? 'AI 正在回复...' : '输入消息，Enter 发送，Shift+Enter 换行'}
           disabled={isLoading}
           rows={1}
-          className="control min-h-[46px] flex-1 resize-none px-4 py-3 text-sm disabled:opacity-50"
+          className="control min-h-[48px] flex-1 resize-none px-4 py-3 text-sm disabled:opacity-50"
         />
         <button
           type="button"
