@@ -5,9 +5,10 @@ import { useChatStore } from '../../store/chatStore';
 import { ArrowRight, BookOpen, Library, MessageCircle, Search, X } from 'lucide-react';
 
 const quickPrompts = [
-  { icon: BookOpen, label: '总结这篇论文的核心观点', prompt: '请总结这篇论文的核心观点和主要贡献。' },
-  { icon: Search, label: '论文中使用了哪些方法', prompt: '这篇论文使用了哪些研究方法？请列举并简要说明。' },
+  { icon: BookOpen, label: '总结核心观点', prompt: '请总结这篇论文的核心观点和主要贡献。' },
+  { icon: Search, label: '梳理研究方法', prompt: '这篇论文使用了哪些研究方法？请列举并简要说明。' },
   { icon: Library, label: '对比相关研究', prompt: '请对比本文与相关领域其他研究的异同。' },
+  { icon: MessageCircle, label: '追问来源证据', prompt: '请详细说明论文中关键结论的来源证据和支撑数据。' },
 ];
 
 export function ChatWindow() {
@@ -24,7 +25,11 @@ export function ChatWindow() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = bottomRef.current;
+    if (el) {
+      const container = el.closest('.overflow-y-auto');
+      if (container) container.scrollTop = container.scrollHeight;
+    }
   }, [messages]);
 
   return (
@@ -77,15 +82,15 @@ export function ChatWindow() {
           {messages.length === 0 ? (
             <div className="empty-hero">
               <div className="empty-hero-panel">
-                <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--glass-border-strong)] bg-[var(--surface)] text-[var(--color-ink)] shadow-sm">
-                  <MessageCircle size={26} />
+                <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--glass-border-strong)] bg-[var(--surface)] text-[var(--color-ink)] shadow-sm">
+                  <MessageCircle size={22} />
                 </div>
                 <p className="eyebrow">RESEARCH COPILOT</p>
-                <h2 className="mt-2 text-[38px] font-extrabold leading-tight tracking-tight text-[var(--color-ink)]">
+                <h2 className="mt-2 font-[var(--font-display)] text-[30px] font-bold leading-tight tracking-[-0.01em] text-[var(--color-ink)]">
                   和论文自然对话
                 </h2>
-                <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-[var(--color-ink-mute)]">
-                  围绕当前论文或全部文献库提问，答案会附带可追溯来源证据。
+                <p className="mx-auto mt-3 max-w-[440px] text-[14px] leading-6 text-[var(--color-ink-mute)]">
+                  围绕当前论文或全部文献库提问，答案附带可追溯来源证据。
                 </p>
 
                 <div className="quick-chips">

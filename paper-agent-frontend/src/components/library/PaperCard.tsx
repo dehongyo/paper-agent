@@ -73,16 +73,16 @@ export function PaperCard({ paper, onChat, onEdit, onDelete }: Props) {
           <button
             disabled={paper.status !== 'READY'}
             onClick={() => onChat(paper.id)}
-            className="primary-button min-h-[38px] px-2 text-xs"
+            className="paper-card-action-button"
           >
             <MessageCircle size={13} />
             <span className="button-label">对话</span>
           </button>
-          <button onClick={() => onEdit(paper.id)} className="secondary-button min-h-[38px] px-2 text-xs">
+          <button onClick={() => onEdit(paper.id)} className="paper-card-action-button">
             <Pencil size={13} />
             <span className="button-label">编辑</span>
           </button>
-          <button onClick={() => onDelete(paper.id)} className="danger-button min-h-[38px] px-2 text-xs">
+          <button onClick={() => onDelete(paper.id)} className="paper-card-action-button paper-card-danger-action">
             <Trash2 size={13} />
             <span className="button-label">删除</span>
           </button>

@@ -78,8 +78,8 @@ export function WritingPage() {
           </div>
         )}
 
-        <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)_320px]">
-          <aside className="grid content-start gap-4">
+        <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)_300px]">
+          <aside className="grid content-start gap-5 writing-config">
             <WritingConfigPanel
               topic={topic}
               writingType={writingType}
@@ -103,13 +103,22 @@ export function WritingPage() {
             />
           </aside>
 
-          <main className="grid min-w-0 content-start gap-4">
-            <WritingEditor
-              outline={result.outline}
-              draft={result.draft}
-              onOutlineChange={(outline) => setResult((prev) => ({ ...prev, outline }))}
-              onDraftChange={(draft) => setResult((prev) => ({ ...prev, draft }))}
-            />
+          <main className="grid min-w-0 content-start gap-5 writing-editor">
+            {isLoading && !result.outline && !result.draft ? (
+              <div className="surface p-5">
+                <div className="skeleton skeleton-line-lg" style={{ height: 16, marginBottom: 20 }} />
+                <div className="skeleton" style={{ height: 160, borderRadius: 'var(--radius-sm)', marginBottom: 20 }} />
+                <div className="skeleton skeleton-line-md" style={{ height: 14, marginBottom: 16 }} />
+                <div className="skeleton" style={{ height: 360, borderRadius: 'var(--radius-sm)' }} />
+              </div>
+            ) : (
+              <WritingEditor
+                outline={result.outline}
+                draft={result.draft}
+                onOutlineChange={(outline) => setResult((prev) => ({ ...prev, outline }))}
+                onDraftChange={(draft) => setResult((prev) => ({ ...prev, draft }))}
+              />
+            )}
             <div className="flex justify-end">
               <button type="button" onClick={() => void run('export')} disabled={isLoading || !result.draft.trim()} className="secondary-button">
                 重新生成导出
@@ -119,7 +128,7 @@ export function WritingPage() {
             <ExportPanel markdown={result.exportMarkdown} latex={result.exportLatex} />
           </main>
 
-          <aside>
+          <aside className="writing-evidence">
             <WritingEvidencePanel evidence={result.evidence} />
           </aside>
         </div>

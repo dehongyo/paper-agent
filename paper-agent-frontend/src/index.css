@@ -55,6 +55,22 @@
   --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
   --shadow-button: 0 2px 8px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 
+  /* ── Paper texture (extremely subtle, academic journal feel) ── */
+  --paper-texture: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.008) 2px,
+      rgba(0, 0, 0, 0.008) 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.006) 2px,
+      rgba(0, 0, 0, 0.006) 3px
+    );
+
   /* ── Motion ── */
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -75,7 +91,8 @@ body,
 body {
   min-width: 320px;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.03), transparent 60%),
+    var(--paper-texture),
+    radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, 0.025), transparent 60%),
     var(--bg);
   color: var(--color-ink);
   font-family: var(--font-body);
@@ -198,8 +215,15 @@ button:disabled {
   color: var(--color-ink);
 }
 
+
 .sidebar-nav-icon {
   flex-shrink: 0;
+}
+
+.sidebar-nav-button:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+  border-color: var(--fg);
 }
 
 .sidebar-nav-copy {
@@ -267,10 +291,10 @@ button:disabled {
 
 .chat-header {
   border-bottom: 1px solid var(--glass-border-strong);
-  background: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  padding: 16px 28px;
+  padding: 18px 32px;
 }
 
 .chat-header-inner {
@@ -278,8 +302,9 @@ button:disabled {
   max-width: 1024px;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   margin: 0 auto;
+  min-height: 40px;
 }
 
 .scope-switcher {
@@ -307,6 +332,11 @@ button:disabled {
   transition: background 180ms var(--ease-spring), color 180ms var(--ease-spring), box-shadow 180ms var(--ease-spring);
 }
 
+.scope-button:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+
 .scope-button-active {
   background: var(--fg);
   color: #fff;
@@ -321,6 +351,7 @@ button:disabled {
   height: 100%;
   overflow-y: auto;
   padding: 44px 48px;
+  scrollbar-gutter: stable;
 }
 
 .page-content {
@@ -345,7 +376,7 @@ button:disabled {
   color: var(--color-ink-mute);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   font-family: var(--font-mono);
 }
@@ -419,6 +450,11 @@ button:disabled {
   border-color: var(--fg);
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.06);
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 1px;
 }
 
 textarea.control {
@@ -595,6 +631,19 @@ select.control {
   transform: translateY(0);
 }
 
+.primary-button:focus-visible,
+.primary-icon-button:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+
+.secondary-button:focus-visible,
+.danger-button:focus-visible,
+.icon-button:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+
 .primary-button > svg,
 .secondary-button > svg,
 .danger-button > svg {
@@ -645,8 +694,70 @@ select.control {
 
 .paper-card-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(88px, 1fr));
   gap: 8px;
+}
+
+.paper-card-action-button {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 38px;
+  width: 100%;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 180ms var(--ease-spring), background 180ms var(--ease-spring), color 180ms var(--ease-spring), transform 180ms var(--ease-spring), box-shadow 180ms var(--ease-spring);
+}
+
+.paper-card-action-button:hover:not(:disabled) {
+  border-color: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.paper-card-danger-action {
+  color: rgb(185, 28, 28);
+  border-color: rgba(185, 28, 28, 0.28);
+  background: rgba(254, 242, 242, 0.58);
+}
+
+.paper-card-danger-action:hover:not(:disabled) {
+  color: rgb(153, 27, 27);
+  border-color: rgba(185, 28, 28, 0.42);
+  background: rgba(254, 226, 226, 0.78);
+}
+
+.paper-card-action-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.paper-card-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.paper-card-action-button:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+
+.paper-card-action-button > svg {
+  flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════════════
@@ -681,14 +792,14 @@ select.control {
 }
 
 .empty-hero-panel {
-  width: min(100%, 620px);
+  width: min(100%, 580px);
   border: 1px solid var(--glass-border-strong);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.62);
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  padding: 52px 44px;
+  padding: 48px 40px;
   text-align: center;
 }
 
@@ -733,6 +844,9 @@ select.control {
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  padding: 16px 20px;
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 .message-bubble-assistant {
@@ -765,16 +879,81 @@ select.control {
 }
 
 /* ═══════════════════════════════════════════
+   Skeleton loading states
+   ═══════════════════════════════════════════ */
+
+@keyframes skeleton-shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.04) 0%,
+    rgba(0, 0, 0, 0.07) 40%,
+    rgba(0, 0, 0, 0.04) 80%
+  );
+  background-size: 400px 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-card {
+  min-height: 340px;
+  padding: 20px;
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+}
+
+.skeleton-line {
+  height: 13px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.skeleton-line:last-child {
+  margin-bottom: 0;
+}
+
+.skeleton-line-sm { width: 55%; }
+.skeleton-line-md { width: 78%; }
+.skeleton-line-lg { width: 92%; }
+.skeleton-line-xl { width: 100%; }
+
+.skeleton-block {
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+
+.skeleton-avatar {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-btn {
+  height: 38px; border-radius: var(--radius-sm);
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════
    Playbook cards (sidebar bottom)
    ═══════════════════════════════════════════ */
 
 .playbook-card {
   border: 1px solid var(--glass-border-strong);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   padding: 14px 15px;
+  transition: border-color 180ms var(--ease-spring), background 180ms var(--ease-spring);
+}
+
+.playbook-card:hover {
+  border-color: rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.75);
 }
 
 .playbook-card-title {
@@ -786,7 +965,7 @@ select.control {
 
 .playbook-card-body {
   margin-top: 6px;
-  color: var(--color-ink-mute);
+  color: var(--color-ink-soft);
   font-size: 12px;
   line-height: 1.55;
 }
@@ -847,16 +1026,16 @@ select.control {
    ═══════════════════════════════════════════ */
 
 .quick-chips {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  justify-content: center;
   margin-top: 24px;
 }
 
 .quick-chip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   border: 1px solid var(--glass-border-strong);
   border-radius: var(--radius-sm);
@@ -866,8 +1045,9 @@ select.control {
   color: var(--color-ink-soft);
   font-size: 13px;
   font-weight: 500;
-  padding: 8px 16px;
+  padding: 10px 14px;
   cursor: pointer;
+  text-align: center;
   transition: border-color 180ms var(--ease-spring), background 180ms var(--ease-spring), color 180ms var(--ease-spring), transform 180ms var(--ease-spring);
 }
 
@@ -1009,6 +1189,288 @@ select.control {
 .message-bubble td {
   padding: 7px 12px;
   border-bottom: 1px solid var(--border-soft);
+}
+
+/* ═══════════════════════════════════════════
+   Writing workspace — refined three-column layout
+   ═══════════════════════════════════════════ */
+
+.writing-config .surface {
+  border-color: var(--glass-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.writing-config .surface h2 {
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.writing-editor .surface {
+  border-color: var(--glass-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.writing-editor .surface textarea {
+  border-color: var(--glass-border-strong);
+  background: rgba(255, 255, 255, 0.64);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  transition: border-color 180ms var(--ease-spring), box-shadow 180ms var(--ease-spring);
+}
+
+.writing-editor .surface textarea:focus {
+  border-color: var(--fg);
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.writing-editor .surface textarea::placeholder {
+  color: var(--muted);
+}
+
+.writing-evidence .surface {
+  border-color: var(--glass-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.writing-evidence article {
+  border-color: var(--color-border);
+  transition: border-color 180ms var(--ease-spring);
+}
+
+.writing-evidence article:hover {
+  border-color: var(--glass-border-strong);
+}
+
+.writing-section-header {
+  position: relative;
+  padding-left: 14px;
+}
+
+.writing-section-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--fg);
+}
+
+.writing-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.writing-actions .secondary-button {
+  border-color: var(--color-border-strong);
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.writing-actions .secondary-button:hover {
+  border-color: var(--fg);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-sm);
+}
+
+.writing-empty-state {
+  border: 1px dashed var(--color-border) !important;
+  background: var(--color-primary-soft) !important;
+}
+
+.writing-empty-state strong {
+  color: var(--fg);
+  font-weight: 700;
+}
+
+.writing-evidence-index {
+  background: var(--color-primary-soft);
+  color: var(--fg);
+  font-weight: 700;
+}
+
+.writing-reference-item {
+  border: 1px solid var(--color-border);
+  background: var(--surface);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.writing-reference-item:hover {
+  border-color: var(--glass-border-strong);
+}
+
+/* ═══════════════════════════════════════════
+   Motion — restrained, functional micro-animation
+   ═══════════════════════════════════════════ */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* View content entrance */
+.main-canvas > * {
+  animation: fade-in 180ms var(--ease-spring) both;
+}
+
+/* Paper card staggered entrance — first 6 cards only */
+.paper-card:nth-child(1) { animation: fade-up 280ms var(--ease-spring) both; animation-delay: 0ms; }
+.paper-card:nth-child(2) { animation: fade-up 280ms var(--ease-spring) both; animation-delay: 60ms; }
+.paper-card:nth-child(3) { animation: fade-up 280ms var(--ease-spring) both; animation-delay: 120ms; }
+.paper-card:nth-child(4) { animation: fade-up 280ms var(--ease-spring) both; animation-delay: 180ms; }
+.paper-card:nth-child(5) { animation: fade-up 280ms var(--ease-spring) both; animation-delay: 240ms; }
+.paper-card:nth-child(6) { animation: fade-up 280ms var(--ease-spring) both; animation-delay: 300ms; }
+
+/* Empty hero panel entrance */
+.empty-hero-panel {
+  animation: fade-up 300ms var(--ease-spring) both;
+}
+
+/* ═══════════════════════════════════════════
+   Slide-out panel & modal transitions
+   ═══════════════════════════════════════════ */
+
+/* Backdrop overlay — fade in */
+.backdrop-overlay {
+  animation: backdrop-in 200ms var(--ease-spring) both;
+}
+
+/* Slide panel — slide in from right */
+.slide-panel {
+  animation: slide-in-right 240ms var(--ease-spring) both;
+}
+
+.edit-panel-shell {
+  position: relative;
+  width: min(calc(100% - clamp(24px, 6vw, 96px)), 56rem);
+  margin-left: clamp(24px, 6vw, 96px);
+}
+
+.edit-panel-section {
+  padding-left: clamp(28px, 4vw, 56px);
+  padding-right: clamp(28px, 4vw, 56px);
+}
+
+.edit-panel-header {
+  padding-right: clamp(84px, 8vw, 108px);
+}
+
+.edit-panel-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 2;
+}
+
+/* Modal dialog — scale + fade in */
+.modal-dialog {
+  animation: scale-in 200ms var(--ease-spring) both;
+}
+
+/* ═══════════════════════════════════════════
+   Library page polish — visual rhythm
+   ═══════════════════════════════════════════ */
+
+/* Filter bar — subtle separation from card grid */
+.library-filter-bar {
+  border-color: var(--glass-border-strong);
+  background: var(--color-paper);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Card grid spacing — consistent breathing room */
+.library-grid {
+  gap: 20px;
+}
+
+/* Edit panel form labels — comfortable spacing */
+.edit-panel-label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--color-ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Status pill — softer ready state */
+.pill-ready {
+  background: color-mix(in oklab, var(--fg) 12%, transparent);
+  color: var(--fg);
+}
+
+/* Empty state in library — centered with breathing room */
+.library-empty-state {
+  padding: 64px 24px;
+}
+
+/* Chat session picker — modal polish */
+.session-picker-backdrop {
+  animation: backdrop-in 180ms var(--ease-spring) both;
+}
+
+.session-picker-dialog {
+  animation: scale-in 200ms var(--ease-spring) both;
+}
+
+/* Reduced motion — strip all transform animations, keep opacity-only */
+@media (prefers-reduced-motion: reduce) {
+  .main-canvas > *,
+  .paper-card:nth-child(n),
+  .empty-hero-panel,
+  .backdrop-overlay,
+  .slide-panel,
+  .modal-dialog {
+    animation: fade-in 120ms linear both;
+  }
+
+  @keyframes slide-in-right {
+    from, to { opacity: 1; transform: none; }
+  }
+
+  @keyframes scale-in {
+    from, to { opacity: 1; transform: none; }
+  }
 }
 
 /* ═══════════════════════════════════════════

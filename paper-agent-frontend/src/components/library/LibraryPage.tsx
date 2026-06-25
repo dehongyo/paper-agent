@@ -163,7 +163,7 @@ export function LibraryPage({ onNavigate }: Props) {
           <PaperUpload onUploaded={handleUploaded} />
         </header>
 
-        <div className="surface mb-6 grid gap-3 p-3 lg:grid-cols-[1fr_160px_160px_auto]">
+        <div className="surface library-filter-bar mb-6 grid gap-3 p-3 lg:grid-cols-[1fr_160px_160px_auto]">
           <label className="relative">
             <Search size={16} className="search-icon" />
             <input
@@ -203,8 +203,27 @@ export function LibraryPage({ onNavigate }: Props) {
         </div>
 
         {isLoading && (
-          <div className="flex justify-center py-16 text-[var(--color-ink-mute)]">
-            <Loader2 size={24} className="animate-spin" />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="skeleton-card">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="skeleton skeleton-avatar" />
+                  <div className="skeleton" style={{ width: 52, height: 22, borderRadius: 999 }} />
+                </div>
+                <div className="skeleton skeleton-line skeleton-line-lg" style={{ height: 17 }} />
+                <div className="skeleton skeleton-line skeleton-line-md" />
+                <div className="skeleton skeleton-line skeleton-line-sm" style={{ marginBottom: 16 }} />
+                <div className="skeleton skeleton-line skeleton-line-xl" />
+                <div className="skeleton skeleton-line skeleton-line-lg" />
+                <div className="skeleton skeleton-line skeleton-line-xl" style={{ width: '65%' }} />
+                <div className="skeleton skeleton-line skeleton-line-md" style={{ width: '40%', marginBottom: 20 }} />
+                <div className="paper-card-actions" style={{ marginTop: 'auto' }}>
+                  <div className="skeleton skeleton-btn" />
+                  <div className="skeleton skeleton-btn" />
+                  <div className="skeleton skeleton-btn" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -218,7 +237,7 @@ export function LibraryPage({ onNavigate }: Props) {
         )}
 
         {!isLoading && !error && papers.length === 0 && (
-          <div className="surface flex flex-col items-center gap-3 py-16 text-[var(--color-ink-mute)]">
+          <div className="surface library-empty-state flex flex-col items-center gap-3 text-[var(--color-ink-mute)]">
             <Library size={48} strokeWidth={1.2} />
             <p className="font-bold text-[var(--color-ink)]">还没有符合条件的论文</p>
             <p className="text-sm">上传论文或调整筛选条件后再试。</p>
@@ -226,7 +245,7 @@ export function LibraryPage({ onNavigate }: Props) {
         )}
 
         {!isLoading && papers.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid library-grid sm:grid-cols-2 xl:grid-cols-3">
             {papers.map((paper) => (
               <PaperCard
                 key={paper.id}
@@ -249,8 +268,8 @@ export function LibraryPage({ onNavigate }: Props) {
         )}
 
         {chatPaper && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 px-4 backdrop-blur-sm">
-            <div className="surface-solid w-full max-w-xl p-5 shadow-[var(--shadow-lg)]">
+          <div className="fixed inset-0 z-50 flex items-center justify-center session-picker-backdrop bg-black/20 px-4 backdrop-blur-sm">
+            <div className="surface-solid session-picker-dialog w-full max-w-xl p-5 shadow-[var(--shadow-lg)]">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="eyebrow">PAPER CHAT HISTORY</p>

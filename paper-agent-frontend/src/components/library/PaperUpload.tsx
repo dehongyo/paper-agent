@@ -55,9 +55,9 @@ export function PaperUpload({ onUploaded }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/24 p-4 backdrop-blur-sm" onClick={() => setOpen(false)}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-overlay bg-black/24 p-4 backdrop-blur-sm" onClick={() => setOpen(false)}>
       <div
-        className="surface-solid w-full max-w-md p-5 shadow-[var(--shadow-lg)]"
+        className="surface-solid modal-dialog w-full max-w-md p-5 shadow-[var(--shadow-lg)]"
         onClick={(event) => event.stopPropagation()}
         onDrop={handleDrop}
         onDragOver={(event) => event.preventDefault()}

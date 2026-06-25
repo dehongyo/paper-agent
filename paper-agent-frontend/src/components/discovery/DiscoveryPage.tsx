@@ -84,20 +84,22 @@ export function DiscoveryPage() {
         </div>
 
         {!hasSearched && !isLoading && (
-          <div className="surface flex flex-col items-center py-14 text-center">
-            <Search size={44} strokeWidth={1.2} className="mb-4 text-[var(--color-ink-mute)] opacity-50" />
-            <p className="font-bold text-[var(--color-ink)]">探索外部论文</p>
-            <p className="mt-2 text-sm text-[var(--color-ink-mute)]">输入关键词检索，或试试热门方向：</p>
-            <div className="quick-chips">
+          <div className="surface flex flex-col items-center py-14 pb-[72px] text-center px-8">
+            <Search size={40} strokeWidth={1.2} className="mb-4 text-[var(--color-ink-mute)] opacity-45" />
+            <p className="text-lg font-bold text-[var(--color-ink)]">探索外部论文</p>
+            <p className="mt-2 max-w-md text-sm leading-6 text-[var(--color-ink-mute)]">
+              输入关键词检索 arXiv 和 Semantic Scholar，或从热门方向开始：
+            </p>
+            <div className="mt-6 grid w-full max-w-lg gap-2.5 sm:grid-cols-2">
               {quickSearches.map((item) => (
                 <button
                   key={item.label}
                   type="button"
                   onClick={() => void search(item.query)}
-                  className="quick-chip"
+                  className="quick-chip justify-between"
                 >
-                  {item.label}
-                  <ArrowRight size={12} />
+                  <span className="truncate">{item.label}</span>
+                  <ArrowRight size={13} className="shrink-0" />
                 </button>
               ))}
             </div>

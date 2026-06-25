@@ -11,13 +11,13 @@ export function ChatMessage({ message, onSelectPaper }: Props) {
   const isUser = message.role === 'user';
 
   return (
-    <div className={`flex gap-3 py-3 ${isUser ? 'flex-row-reverse' : ''}`}>
+    <div className={`flex gap-3 py-3.5 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div className={`avatar-chip ${isUser ? 'avatar-user' : 'avatar-assistant'}`}>
         {isUser ? '我' : 'AI'}
       </div>
 
       <div
-        className={`message-bubble max-w-[82%] px-4 py-3 text-sm leading-7 text-[var(--color-ink)] ${
+        className={`message-bubble max-w-[82%] text-[var(--color-ink)] ${
           isUser ? 'message-bubble-user' : 'message-bubble-assistant'
         }`}
       >

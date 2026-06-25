@@ -6,6 +6,8 @@ interface Props {
 }
 
 export function WritingEditor({ outline, draft, onOutlineChange, onDraftChange }: Props) {
+  const isEmpty = !outline.trim() && !draft.trim();
+
   return (
     <section className="surface p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -15,13 +17,21 @@ export function WritingEditor({ outline, draft, onOutlineChange, onDraftChange }
         </div>
       </div>
 
+      {isEmpty && (
+        <div className="mb-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-primary-soft)] px-5 py-3.5 text-center">
+          <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+            在左侧填写综述主题和格式，然后点击「生成大纲」<span className="font-semibold text-[var(--color-ink)]">开始写作</span>。大纲生成后可继续生成草稿和参考文献。
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-4">
         <label>
           <span className="mb-1.5 block text-xs font-semibold text-[var(--color-ink-soft)]">大纲</span>
           <textarea
             value={outline}
             onChange={(event) => onOutlineChange(event.target.value)}
-            placeholder="生成或手动输入综述大纲..."
+            placeholder="生成或手动输入综述大纲…"
             className="control min-h-40 resize-y px-3 py-3 text-sm leading-6"
           />
         </label>
@@ -31,7 +41,7 @@ export function WritingEditor({ outline, draft, onOutlineChange, onDraftChange }
           <textarea
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
-            placeholder="生成或手动输入综述草稿..."
+            placeholder="生成或手动输入综述草稿…"
             className="control min-h-[360px] resize-y px-3 py-3 text-sm leading-6"
           />
         </label>
