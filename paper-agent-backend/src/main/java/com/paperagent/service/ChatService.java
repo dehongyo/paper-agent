@@ -4,22 +4,38 @@ import com.paperagent.dto.ChatHistoryMessage;
 import com.paperagent.dto.EvidenceChunk;
 import com.paperagent.dto.TraceableChatResponse;
 import com.paperagent.dto.TraceableChatStreamEvent;
-import lombok.RequiredArgsConstructor;
+import com.paperagent.entity.Paper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ChatService {
 
     private final ChatClient chatClient;
     private final EmbeddingService embeddingService;
     private final EvidenceSearchService evidenceSearchService;
+    private final PaperService paperService;
+
+    public ChatService(
+            ChatClient chatClient,
+            EmbeddingService embeddingService,
+            EvidenceSearchService evidenceSearchService,
+            @Lazy PaperService paperService
+    ) {
+        this.chatClient = chatClient;
+        this.embeddingService = embeddingService;
+        this.evidenceSearchService = evidenceSearchService;
+        this.paperService = paperService;
+    }
 
     public String chat(String userMessage) {
         return chatClient.prompt()
@@ -64,7 +80,7 @@ public class ChatService {
             );
         }
 
-        String prompt = buildTraceablePrompt(userMessage, evidence, List.of());
+        String prompt = buildTraceablePrompt(userMessage, evidence, null, List.of());
         String answer = chatClient.prompt()
                 .user(prompt)
                 .call()
@@ -82,16 +98,22 @@ public class ChatService {
             String scope,
             List<ChatHistoryMessage> history
     ) {
-        Long searchPaperId = "library".equals(scope) ? null : paperId;
-        List<EvidenceChunk> evidence = evidenceSearchService.search(userMessage, searchPaperId, 6);
-        if (evidence.isEmpty()) {
+        boolean isLibraryScope = "library".equals(scope);
+        Long searchPaperId = isLibraryScope ? null : paperId;
+        List<EvidenceChunk> evidence = evidenceSearchService.search(userMessage, searchPaperId, 8);
+
+        // Build library overview for library-scoped conversations
+        String libraryOverview = isLibraryScope ? buildLibraryOverview() : null;
+
+        // Even without matching evidence, answer library meta-questions using the overview
+        if (evidence.isEmpty() && (libraryOverview == null || libraryOverview.isBlank())) {
             return Flux.just(
                     TraceableChatStreamEvent.answer("本地文献库中没有足够信息回答这个问题。请上传更多相关论文，或换一个更具体的问题。"),
                     TraceableChatStreamEvent.done()
             );
         }
 
-        String prompt = buildTraceablePrompt(userMessage, evidence, history);
+        String prompt = buildTraceablePrompt(userMessage, evidence, libraryOverview, history);
         return chatClient.prompt()
                 .user(prompt)
                 .stream()
@@ -101,6 +123,60 @@ public class ChatService {
                         TraceableChatStreamEvent.evidence(evidence),
                         TraceableChatStreamEvent.done()
                 );
+    }
+
+    /**
+     * Build a comprehensive overview of the entire paper library.
+     * This gives the AI full visibility into the library for meta-questions.
+     */
+    private String buildLibraryOverview() {
+        List<Paper> allPapers = paperService.getAllPapers();
+        if (allPapers.isEmpty()) return "";
+
+        long readyCount = allPapers.stream().filter(p -> p.getStatus() == Paper.PaperStatus.READY).count();
+        long processingCount = allPapers.stream().filter(p -> p.getStatus() != Paper.PaperStatus.READY && p.getStatus() != Paper.PaperStatus.ERROR).count();
+
+        // Aggregate tags
+        Map<String, Long> tagCounts = allPapers.stream()
+                .flatMap(p -> PaperService.parseTags(p.getTags()).stream())
+                .collect(Collectors.groupingBy(t -> t, LinkedHashMap::new, Collectors.counting()));
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== 文献库概况 ===\n");
+        sb.append("论文总数：").append(allPapers.size()).append(" 篇");
+        sb.append("（就绪 ").append(readyCount).append(" 篇");
+        if (processingCount > 0) sb.append("，处理中 ").append(processingCount).append(" 篇");
+        sb.append("）\n\n");
+
+        // Tag summary
+        if (!tagCounts.isEmpty()) {
+            sb.append("主题标签分布：\n");
+            tagCounts.forEach((tag, count) ->
+                sb.append("  - ").append(tag).append("（").append(count).append("篇）\n"));
+            sb.append("\n");
+        }
+
+        // Individual paper summaries
+        sb.append("文献列表：\n");
+        for (Paper p : allPapers) {
+            sb.append("  [ID:").append(p.getId()).append("] ");
+            sb.append(p.getTitle());
+            if (p.getAuthors() != null && !p.getAuthors().isBlank()) {
+                sb.append(" | 作者：").append(p.getAuthors());
+            }
+            if (p.getTags() != null && !p.getTags().isBlank()) {
+                sb.append(" | 标签：").append(p.getTags());
+            }
+            sb.append(" | 状态：").append(p.getStatus().name());
+            if (p.getSummary() != null && !p.getSummary().isBlank()) {
+                // Truncate summary to keep overview manageable
+                String s = p.getSummary();
+                sb.append(" | 摘要：").append(s.length() > 200 ? s.substring(0, 200) + "..." : s);
+            }
+            sb.append("\n");
+        }
+
+        return sb.toString();
     }
 
     public String generateSummary(String fullText) {
@@ -142,7 +218,7 @@ public class ChatService {
             """.formatted(context);
     }
 
-    private String buildTraceablePrompt(String userMessage, List<EvidenceChunk> evidence, List<ChatHistoryMessage> history) {
+    private String buildTraceablePrompt(String userMessage, List<EvidenceChunk> evidence, String libraryOverview, List<ChatHistoryMessage> history) {
         StringBuilder context = new StringBuilder();
         for (int i = 0; i < evidence.size(); i++) {
             EvidenceChunk chunk = evidence.get(i);
@@ -157,20 +233,50 @@ public class ChatService {
                     .append("\n\n");
         }
 
-        return """
-            你是一个严谨的学术论文助手。请只基于下面证据回答问题。
-            如果证据不足，请明确说明证据不足，不要编造论文、作者、实验数据或引用。
-            回答中使用 [1]、[2] 这样的编号标注来源。
+        boolean hasLibrary = libraryOverview != null && !libraryOverview.isBlank();
+        boolean hasEvidence = !evidence.isEmpty();
 
-            历史对话：
-            %s
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("你是一个严谨的学术论文助手，同时也是用户的文献库管家。\n\n");
 
-            证据：
-            %s
+        // Library overview section
+        if (hasLibrary) {
+            prompt.append("## 用户的文献库\n");
+            prompt.append("以下是用户文献库的完整概况，包含所有论文的标题、作者、标签、状态和摘要。\n");
+            prompt.append("当用户询问「文献库有多少篇论文」「有哪些主题」「关于XX的论文有哪些」等文献库管理类问题时，请基于此概况回答。\n");
+            prompt.append(libraryOverview);
+            prompt.append("\n\n");
+        }
 
-            用户问题：
-            %s
-            """.formatted(formatHistory(history), context, userMessage);
+        // Evidence section
+        if (hasEvidence) {
+            prompt.append("## 语义搜索匹配到的内容片段\n");
+            prompt.append("以下是基于用户问题匹配的相关论文片段。当用户询问论文具体内容、方法、结论等细节时，请基于这些片段回答，并使用 [1]、[2] 编号标注来源。\n");
+            prompt.append(context);
+            prompt.append("\n");
+        }
+
+        // Instructions
+        prompt.append("## 指引\n");
+        prompt.append("- 文献库概况类问题（总数、主题、分布）：使用「文献库」部分回答\n");
+        if (hasEvidence) {
+            prompt.append("- 论文内容类问题（方法、结论、细节）：使用「内容片段」部分回答，标注 [1][2] 来源\n");
+        } else {
+            prompt.append("- 当前没有匹配到相关论文片段，如果用户问的是内容细节类问题，请说明文献库中暂无相关内容\n");
+        }
+        prompt.append("- 不要编造论文、作者、实验数据或引用\n");
+        prompt.append("- 回答使用中文，保持学术、准确、有帮助的风格\n\n");
+
+        // History
+        prompt.append("历史对话：\n");
+        prompt.append(formatHistory(history));
+        prompt.append("\n\n");
+
+        // User question
+        prompt.append("用户问题：\n");
+        prompt.append(userMessage);
+
+        return prompt.toString();
     }
 
     private String buildConversationPrompt(String userMessage, List<ChatHistoryMessage> history) {

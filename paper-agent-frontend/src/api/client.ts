@@ -5,8 +5,10 @@ import type {
   ChatSessionCreateRequest,
   DiscoveryResult,
   PaperListItem,
+  PaperStats,
   PaperSummary,
   PaperUpdateRequest,
+  ReferenceItem,
   SemanticSearchRequest,
   SemanticSearchResponse,
   TraceableChatRequest,
@@ -14,6 +16,8 @@ import type {
   TraceableChatStreamEvent,
   WritingRequest,
   WritingResponse,
+  WritingVersionFull,
+  WritingVersionResponse,
 } from '../types';
 
 const BASE_URL = '/api';
@@ -56,6 +60,18 @@ export async function deletePaper(id: number): Promise<void> {
   if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
 }
 
+export async function getFullText(id: number): Promise<string> {
+  const res = await fetch(`${BASE_URL}/papers/${id}/fulltext`);
+  if (!res.ok) throw new Error(`Get fulltext failed: ${res.status}`);
+  return res.text();
+}
+
+export async function getPaperStatus(id: number): Promise<{ status: string }> {
+  const res = await fetch(`${BASE_URL}/papers/${id}/status`);
+  if (!res.ok) throw new Error(`Status fetch failed: ${res.status}`);
+  return res.json();
+}
+
 export async function getTags(): Promise<string[]> {
   return request<string[]>('/papers/tags');
 }
@@ -66,6 +82,24 @@ export async function uploadPaper(file: File): Promise<PaperSummary> {
   const res = await fetch(`${BASE_URL}/papers/upload`, { method: 'POST', body: formData });
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
   return res.json();
+}
+
+export async function importPaper(urlOrDoi: string): Promise<PaperSummary> {
+  return request<PaperSummary>('/papers/import', {
+    method: 'POST',
+    body: JSON.stringify({ urlOrDoi }),
+  });
+}
+
+export async function batchImport(urlsOrDois: string[]): Promise<PaperSummary[]> {
+  return request<PaperSummary[]>('/papers/import/batch', {
+    method: 'POST',
+    body: JSON.stringify({ urlsOrDois }),
+  });
+}
+
+export async function getPaperStats(): Promise<PaperStats> {
+  return request<PaperStats>('/papers/stats');
 }
 
 export async function semanticSearch(req: SemanticSearchRequest): Promise<SemanticSearchResponse> {
@@ -110,7 +144,7 @@ export async function deleteChatSession(sessionId: number): Promise<void> {
 
 export async function discoverPapers(params: {
   query: string;
-  source: 'all' | 'arxiv' | 'semantic-scholar';
+  source: 'all' | 'arxiv' | 'semantic-scholar' | 'pubmed' | 'dblp';
   limit?: number;
 }): Promise<DiscoveryResult[]> {
   const search = new URLSearchParams();
@@ -139,6 +173,22 @@ export async function exportWriting(req: WritingRequest): Promise<WritingRespons
     method: 'POST',
     body: JSON.stringify(req),
   });
+}
+
+export async function saveWritingVersion(data: { topic: string; outline: string; draft: string; references: ReferenceItem[] }): Promise<WritingVersionResponse> {
+  return request<WritingVersionResponse>('/writing/versions', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function getWritingVersions(): Promise<WritingVersionResponse[]> {
+  return request<WritingVersionResponse[]>('/writing/versions');
+}
+
+export async function getWritingVersion(id: number): Promise<WritingVersionFull> {
+  return request<WritingVersionFull>(`/writing/versions/${id}`);
+}
+
+export async function deleteWritingVersion(id: number): Promise<void> {
+  await fetch(`${BASE_URL}/writing/versions/${id}`, { method: 'DELETE' });
 }
 
 export function streamChat(

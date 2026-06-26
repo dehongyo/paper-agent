@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
+import { SearchPanel } from './SearchPanel';
 import { useChatStore } from '../../store/chatStore';
-import { ArrowRight, BookOpen, Library, MessageCircle, Search, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Library, MessageCircle, PanelRightClose, PanelRightOpen, Search, X } from 'lucide-react';
 
 const quickPrompts = [
   { icon: BookOpen, label: '总结核心观点', prompt: '请总结这篇论文的核心观点和主要贡献。' },
@@ -23,6 +24,7 @@ export function ChatWindow() {
     activeSessionTitle,
   } = useChatStore();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
 
   useEffect(() => {
     const el = bottomRef.current;
@@ -74,11 +76,23 @@ export function ChatWindow() {
               <span className="line-clamp-1">{activeSessionTitle}</span>
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={() => setShowSearchPanel((prev) => !prev)}
+            className={`icon-button ml-1 ${showSearchPanel ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)]' : ''}`}
+            aria-label={showSearchPanel ? '关闭搜索面板' : '打开搜索面板'}
+            title="语义搜索文献库"
+          >
+            {showSearchPanel ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
+          </button>
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-7">
-        <div className="mx-auto h-full max-w-5xl">
+      <div className="min-h-0 flex flex-1">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto px-7">
+            <div className="mx-auto h-full max-w-5xl">
           {messages.length === 0 ? (
             <div className="empty-hero">
               <div className="empty-hero-panel">
@@ -119,11 +133,19 @@ export function ChatWindow() {
               ))}
             </div>
           )}
-          <div ref={bottomRef} />
-        </div>
-      </div>
+              <div ref={bottomRef} />
+            </div>
+          </div>
 
-      <ChatInput onSend={sendMessage} isLoading={isLoading} />
+          <ChatInput onSend={sendMessage} isLoading={isLoading} />
+        </div>
+
+        {showSearchPanel && (
+          <div className="w-80 shrink-0 border-l border-[var(--color-border)]">
+            <SearchPanel onSelectPaper={setSelectedPaper} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

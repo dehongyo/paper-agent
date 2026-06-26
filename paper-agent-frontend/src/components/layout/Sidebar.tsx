@@ -1,5 +1,6 @@
 import { FilePenLine, Library, MessageCircle, Search } from 'lucide-react';
 import type { View } from './Layout';
+import { ThemeToggle } from './ThemeToggle';
 
 interface Props {
   currentView: View;
@@ -53,6 +54,10 @@ export function Sidebar({ currentView, onNavigate }: Props) {
             );
           })}
         </nav>
+
+        <div className="mt-auto pt-6 border-t border-[var(--color-border)]">
+          <ThemeToggle />
+        </div>
       </aside>
 
       <nav className="mobile-tabbar">

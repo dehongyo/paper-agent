@@ -166,3 +166,28 @@ export interface WritingResponse {
   exportMarkdown: string;
   exportLatex: string;
 }
+
+export interface WritingVersionResponse {
+  id: number;
+  topic: string;
+  versionNumber: number;
+  createdAt: string;
+}
+
+export interface WritingVersionFull extends WritingVersionResponse {
+  outline: string;
+  draft: string;
+  references: ReferenceItem[];
+}
+
+export interface PaperStats {
+  totalPapers: number;
+  readyPapers: number;
+  processingPapers: number;
+  errorPapers: number;
+  totalTags: number;
+  uniqueTags: number;
+  totalChunks: number;
+  totalChatSessions: number;
+  totalChatMessages: number;
+}

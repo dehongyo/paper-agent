@@ -2,6 +2,7 @@ package com.paperagent.controller;
 
 import com.paperagent.dto.ReferenceItem;
 import com.paperagent.dto.WritingResponse;
+import com.paperagent.repository.WritingVersionRepository;
 import com.paperagent.service.WritingOrchestratorService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,9 @@ class WritingControllerTest {
 
     @MockBean
     WritingOrchestratorService writingOrchestratorService;
+
+    @MockBean
+    WritingVersionRepository writingVersionRepository;
 
     @Test
     void outlineReturnsWritingResponse() throws Exception {

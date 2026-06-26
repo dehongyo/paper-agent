@@ -32,6 +32,9 @@ class ChatServiceTest {
     @Mock
     EvidenceSearchService evidenceSearchService;
 
+    @Mock
+    PaperService paperService;
+
     @InjectMocks
     ChatService chatService;
 
@@ -60,7 +63,8 @@ class ChatServiceTest {
 
     @Test
     void traceableChatStreamReturnsInsufficientEvidenceWithoutCallingModel() {
-        when(evidenceSearchService.search("What is the method?", null, 6)).thenReturn(List.of());
+        when(evidenceSearchService.search("What is the method?", null, 8)).thenReturn(List.of());
+        when(paperService.getAllPapers()).thenReturn(List.of());
 
         List<TraceableChatStreamEvent> events = chatService
                 .chatWithEvidenceStream("What is the method?", null, "library")
@@ -77,7 +81,7 @@ class ChatServiceTest {
     @Test
     void traceableChatStreamEmitsAnswerChunksThenEvidence() {
         EvidenceChunk chunk = new EvidenceChunk(1L, 2L, "Paper", 0, "The method uses RAG.", 0.9);
-        when(evidenceSearchService.search("method", 2L, 6)).thenReturn(List.of(chunk));
+        when(evidenceSearchService.search("method", 2L, 8)).thenReturn(List.of(chunk));
         when(chatClient.prompt().user(anyString()).stream().content()).thenReturn(Flux.just("It ", "uses RAG [1]."));
 
         List<TraceableChatStreamEvent> events = chatService
@@ -96,7 +100,7 @@ class ChatServiceTest {
     @Test
     void traceableChatStreamIncludesHistoryInPrompt() {
         EvidenceChunk chunk = new EvidenceChunk(1L, 2L, "Paper", 0, "The method uses RAG.", 0.9);
-        when(evidenceSearchService.search("method", 2L, 6)).thenReturn(List.of(chunk));
+        when(evidenceSearchService.search("method", 2L, 8)).thenReturn(List.of(chunk));
         when(chatClient.prompt().user(org.mockito.ArgumentMatchers.contains("上一轮回答")).stream().content())
                 .thenReturn(Flux.just("answer"));
 

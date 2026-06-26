@@ -31,16 +31,20 @@ export function PaperEditPanel({ paper, isSaving, onClose, onSave }: Props) {
       return;
     }
     setError(null);
-    await onSave({
-      title: title.trim(),
-      authors: authors.trim() || null,
-      doi: doi.trim() || null,
-      sourceUrl: sourceUrl.trim() || null,
-      publishedAt: publishedAt || null,
-      summary: summary.trim() || null,
-      notes: notes.trim() || null,
-      tags,
-    });
+    try {
+      await onSave({
+        title: title.trim(),
+        authors: authors.trim() || null,
+        doi: doi.trim() || null,
+        sourceUrl: sourceUrl.trim() || null,
+        publishedAt: publishedAt || null,
+        summary: summary.trim() || null,
+        notes: notes.trim() || null,
+        tags,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '保存失败，请稍后重试');
+    }
   };
 
   return (

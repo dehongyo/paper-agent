@@ -60,3 +60,14 @@ CREATE INDEX IF NOT EXISTS idx_chat_sessions_scope_paper_updated
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_order
     ON chat_messages (session_id, message_order ASC);
+
+-- Writing versions table
+CREATE TABLE IF NOT EXISTS writing_versions (
+    id              BIGSERIAL PRIMARY KEY,
+    topic           VARCHAR(500),
+    outline         TEXT,
+    draft           TEXT,
+    references_json TEXT,
+    version_number  INTEGER NOT NULL DEFAULT 1,
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+);

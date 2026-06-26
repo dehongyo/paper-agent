@@ -1,6 +1,7 @@
 package com.paperagent.service;
 
 import com.paperagent.dto.ReferenceItem;
+import com.paperagent.entity.Paper;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -77,5 +78,22 @@ public class ExportService {
                 .replace("_", "\\_")
                 .replace("{", "\\{")
                 .replace("}", "\\}");
+    }
+
+    public String toBibtex(Paper paper) {
+        String author = paper.getAuthors() != null ? paper.getAuthors().replace(";", " and ") : "Unknown";
+        String year = paper.getPublishedAt() != null ? String.valueOf(paper.getPublishedAt().getYear()) : "n.d.";
+        String title = paper.getTitle() != null ? paper.getTitle() : "Untitled";
+        String doi = paper.getDoi() != null ? paper.getDoi() : "";
+        String key = (paper.getAuthors() != null ? paper.getAuthors().split("[;,]")[0].trim().toLowerCase().replaceAll("[^a-z]", "") : "unknown") + year;
+        return String.format("@article{%s,\n  author = {%s},\n  title = {%s},\n  year = {%s},\n  doi = {%s}\n}", key, author, title, year, doi);
+    }
+
+    public String toEndnote(Paper paper) {
+        String author = paper.getAuthors() != null ? paper.getAuthors().replace(";", "\nAU  - ") : "Unknown";
+        String year = paper.getPublishedAt() != null ? String.valueOf(paper.getPublishedAt().getYear()) : "n.d.";
+        String title = paper.getTitle() != null ? paper.getTitle() : "Untitled";
+        String doi = paper.getDoi() != null ? paper.getDoi() : "";
+        return String.format("%%0 Journal Article\nAU  - %s\nTI  - %s\nPY  - %s\nDO  - %s\n%%R  - %s\nER  - \n", author, title, year, doi, doi);
     }
 }

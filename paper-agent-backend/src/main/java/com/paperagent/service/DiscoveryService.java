@@ -15,6 +15,8 @@ public class DiscoveryService {
 
     private final ArxivClient arxivClient;
     private final SemanticScholarClient semanticScholarClient;
+    private final PubmedClient pubmedClient;
+    private final DblpClient dblpClient;
 
     public List<DiscoveryResult> search(String query, String source, int limit) {
         String safeSource = source == null || source.isBlank() ? "all" : source;
@@ -34,6 +36,22 @@ public class DiscoveryService {
                 results.addAll(semanticScholarClient.search(query, safeLimit));
             } catch (Exception e) {
                 log.warn("Semantic Scholar search failed: {}", e.getMessage());
+            }
+        }
+
+        if ("all".equals(safeSource) || "pubmed".equals(safeSource)) {
+            try {
+                results.addAll(pubmedClient.search(query, safeLimit));
+            } catch (Exception e) {
+                log.warn("PubMed search failed: {}", e.getMessage());
+            }
+        }
+
+        if ("all".equals(safeSource) || "dblp".equals(safeSource)) {
+            try {
+                results.addAll(dblpClient.search(query, safeLimit));
+            } catch (Exception e) {
+                log.warn("DBLP search failed: {}", e.getMessage());
             }
         }
 

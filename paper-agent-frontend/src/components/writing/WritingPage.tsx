@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { exportWriting, generateDraft, generateOutline } from '../../api/client';
-import type { CitationStyle, WritingLength, WritingRequest, WritingResponse, WritingType } from '../../types';
+import { exportWriting, generateDraft, generateOutline, saveWritingVersion } from '../../api/client';
+import type { CitationStyle, ReferenceItem, WritingLength, WritingRequest, WritingResponse, WritingType } from '../../types';
+import { Clock, Save } from 'lucide-react';
 import { ExportPanel } from './ExportPanel';
 import { PaperPicker } from './PaperPicker';
 import { ReferenceList } from './ReferenceList';
+import { VersionManager } from './VersionManager';
 import { WritingConfigPanel } from './WritingConfigPanel';
 import { WritingEditor } from './WritingEditor';
 import { WritingEvidencePanel } from './WritingEvidencePanel';
@@ -29,6 +31,7 @@ export function WritingPage() {
   const [result, setResult] = useState<WritingResponse>(emptyResponse);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showVersions, setShowVersions] = useState(false);
 
   const buildRequest = (): WritingRequest => ({
     topic,
@@ -61,6 +64,33 @@ export function WritingPage() {
     }
   };
 
+  const handleSaveVersion = async () => {
+    if (!topic.trim() || !result.draft.trim()) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      await saveWritingVersion({
+        topic,
+        outline: result.outline,
+        draft: result.draft,
+        references: result.references,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '保存版本失败');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLoadVersion = (data: { outline: string; draft: string; references: ReferenceItem[] }) => {
+    setResult((prev) => ({
+      ...prev,
+      outline: data.outline,
+      draft: data.draft,
+      references: data.references,
+    }));
+  };
+
   return (
     <div className="page-shell">
       <div className="page-content">
@@ -69,6 +99,25 @@ export function WritingPage() {
             <p className="eyebrow">WRITING STUDIO</p>
             <h1 className="page-title">写作工作台</h1>
             <p className="page-subtitle">基于本地文献证据生成综述大纲、草稿、参考文献和 Markdown/LaTeX 导出。</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void handleSaveVersion()}
+              disabled={isLoading || !topic.trim() || !result.draft.trim()}
+              className="secondary-button"
+            >
+              <Save size={16} />
+              保存版本
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowVersions(true)}
+              className="secondary-button"
+            >
+              <Clock size={16} />
+              版本历史
+            </button>
           </div>
         </header>
 
@@ -132,6 +181,17 @@ export function WritingPage() {
             <WritingEvidencePanel evidence={result.evidence} />
           </aside>
         </div>
+
+        {showVersions && (
+          <VersionManager
+            topic={topic}
+            outline={result.outline}
+            draft={result.draft}
+            references={result.references}
+            onLoad={handleLoadVersion}
+            onClose={() => setShowVersions(false)}
+          />
+        )}
       </div>
     </div>
   );

@@ -4,13 +4,15 @@ import com.paperagent.dto.PaperUpdateRequest;
 import com.paperagent.entity.Paper;
 import com.paperagent.entity.Paper.PaperStatus;
 import com.paperagent.repository.PaperRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,15 +22,44 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PaperService {
 
     private final PaperRepository paperRepository;
     private final PdfParserService pdfParserService;
     private final EmbeddingService embeddingService;
     private final ChatService chatService;
+    private final ChatClient chatClient;
 
-    private static final String UPLOAD_DIR = "uploads/papers/";
+    private final Path uploadBasePath;
+
+    public PaperService(
+            PaperRepository paperRepository,
+            PdfParserService pdfParserService,
+            EmbeddingService embeddingService,
+            ChatService chatService,
+            ChatClient chatClient
+    ) {
+        this.paperRepository = paperRepository;
+        this.pdfParserService = pdfParserService;
+        this.embeddingService = embeddingService;
+        this.chatService = chatService;
+        this.chatClient = chatClient;
+
+        // Resolve upload directory to absolute path based on user.dir
+        String userDir = System.getProperty("user.dir");
+        Path resolved = Paths.get(userDir, "uploads", "papers").toAbsolutePath().normalize();
+        // Also check if there's a paper-agent-backend subdirectory with uploads
+        Path backendPath = Paths.get(userDir, "paper-agent-backend", "uploads", "papers").toAbsolutePath().normalize();
+        if (Files.exists(backendPath)) {
+            this.uploadBasePath = backendPath;
+        } else if (Files.exists(resolved)) {
+            this.uploadBasePath = resolved;
+        } else {
+            // Default: use the resolved path from user.dir; will be created on first upload
+            this.uploadBasePath = resolved;
+        }
+        log.info("Upload base path resolved to: {}", this.uploadBasePath);
+    }
 
     /**
      * 上传并处理论文：保存文件 → 解析文本 → 分块 → 向量化 → 生成摘要
@@ -36,7 +67,7 @@ public class PaperService {
     @Transactional
     public Paper uploadAndProcess(MultipartFile file) throws IOException {
         // 1. 保存文件
-        Path uploadPath = Paths.get(UPLOAD_DIR);
+        Path uploadPath = uploadBasePath;
         Files.createDirectories(uploadPath);
         String storedFilename = UUID.randomUUID() + "_" + file.getOriginalFilename();
         Path filePath = uploadPath.resolve(storedFilename);
@@ -87,10 +118,26 @@ public class PaperService {
         // Summarize
         String summary = chatService.generateSummary(fullText);
         paper.setSummary(summary);
+        autoTag(paper);
         paper.setStatus(PaperStatus.READY);
         paperRepository.save(paper);
 
         log.info("Paper {} processing complete", paperId);
+    }
+
+    private void autoTag(Paper paper) {
+        if (paper.getTags() != null && !paper.getTags().isBlank()) return;
+        try {
+            String summary = paper.getSummary();
+            if (summary == null || summary.isBlank()) return;
+            String prompt = "You are an academic paper classifier. Based on the following paper summary, generate 3-5 concise English tags separated by commas. Output ONLY the tags, nothing else.\nSummary: " + summary;
+            String tags = chatClient.prompt().user(prompt).call().content();
+            if (tags != null && !tags.isBlank()) {
+                paper.setTags(tags.trim());
+            }
+        } catch (Exception e) {
+            log.warn("Auto-tagging failed for paper {}: {}", paper.getId(), e.getMessage());
+        }
     }
 
     /**
@@ -185,6 +232,93 @@ public class PaperService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    /**
+     * Resolve a URL or DOI to a direct PDF download URL
+     */
+    private String resolvePdfUrl(String urlOrDoi) {
+        String trimmed = urlOrDoi.trim();
+
+        // arXiv abstract URL → PDF URL
+        if (trimmed.contains("arxiv.org/abs/")) {
+            return trimmed.replace("arxiv.org/abs/", "arxiv.org/pdf/") + ".pdf";
+        }
+
+        // arXiv PDF URL — use as-is
+        if (trimmed.contains("arxiv.org/pdf/")) {
+            return trimmed;
+        }
+
+        // DOI → resolve via doi.org
+        if (trimmed.startsWith("10.") || trimmed.startsWith("https://doi.org/")) {
+            String doi = trimmed.startsWith("https://doi.org/")
+                    ? trimmed.substring("https://doi.org/".length())
+                    : trimmed;
+            return "https://doi.org/" + doi;
+        }
+
+        // Assume it's a direct PDF URL
+        return trimmed;
+    }
+
+    private String extractFilenameFromUrl(String url) {
+        String name = url.substring(url.lastIndexOf('/') + 1);
+        // Strip query params
+        int queryIdx = name.indexOf('?');
+        if (queryIdx >= 0) name = name.substring(0, queryIdx);
+        // Ensure .pdf extension
+        if (!name.toLowerCase().endsWith(".pdf")) {
+            name = name + ".pdf";
+        }
+        return name;
+    }
+
+    /**
+     * 从 URL 或 DOI 导入论文
+     */
+    @Transactional
+    public Paper importFromUrl(String urlOrDoi) throws IOException {
+        String resolvedUrl = resolvePdfUrl(urlOrDoi.trim());
+        String filename = extractFilenameFromUrl(resolvedUrl);
+
+        // Download PDF
+        Path uploadPath = uploadBasePath;
+        Files.createDirectories(uploadPath);
+        String storedFilename = UUID.randomUUID() + "_" + filename;
+        Path filePath = uploadPath.resolve(storedFilename);
+
+        try (InputStream in = new URL(resolvedUrl).openStream()) {
+            Files.copy(in, filePath);
+        }
+
+        // Create Paper record
+        Paper paper = Paper.builder()
+                .title(pdfParserService.extractTitle(filePath.toString()))
+                .filename(filename)
+                .filePath(filePath.toString())
+                .pageCount(pdfParserService.getPageCount(filePath.toString()))
+                .status(PaperStatus.UPLOADED)
+                .build();
+        paper = paperRepository.save(paper);
+
+        // Process
+        try {
+            processPaper(paper);
+        } catch (Exception e) {
+            log.error("Failed to process imported paper {}: {}", paper.getId(), e.getMessage(), e);
+            paper.setStatus(PaperStatus.ERROR);
+            paperRepository.save(paper);
+        }
+
+        return paper;
+    }
+
+    /**
+     * Get paper status (for polling)
+     */
+    public Paper getPaperStatus(Long id) {
+        return getPaper(id);
     }
 
     /**

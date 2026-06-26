@@ -100,6 +100,7 @@ body {
   text-rendering: geometricPrecision;
   font-size: 15px;
   line-height: 1.6;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 button,
@@ -694,8 +695,8 @@ select.control {
 
 .paper-card-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(88px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(72px, 1fr));
+  gap: 6px;
 }
 
 .paper-card-action-button {
@@ -1453,6 +1454,48 @@ select.control {
   animation: scale-in 200ms var(--ease-spring) both;
 }
 
+/* ═══════════════════════════════════════════
+   Dark theme
+   ═══════════════════════════════════════════ */
+
+[data-theme="dark"] {
+  --bg: #1a1a1b;
+  --surface: #242425;
+  --surface-warm: #1e1e1f;
+  --fg: #e8e6e3;
+  --fg-2: #b0ada6;
+  --muted: #787774;
+  --meta: #e8e6e3;
+  --border: #3a3a3c;
+  --border-soft: #2e2e30;
+  --accent: #e8e6e3;
+  --accent-on: #1a1a1b;
+  --accent-hover: #f0efed;
+  --accent-active: #d4d2ce;
+  --color-primary-soft: rgba(255,255,255,0.06);
+  --color-accent-soft: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-border-strong: rgba(255,255,255,0.12);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.15);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.2);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.3);
+  --shadow-button: 0 2px 8px rgba(0,0,0,0.3);
+  --paper-texture: none;
+  --color-paper: rgba(36,36,37,0.78);
+  --color-paper-solid: rgba(30,30,31,0.85);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
 /* Reduced motion — strip all transform animations, keep opacity-only */
 @media (prefers-reduced-motion: reduce) {
   .main-canvas > *,
@@ -1555,4 +1598,85 @@ select.control {
   .mobile-tabbar {
     display: none;
   }
+}
+
+/* ═══════════════════════════════════════════
+   PDF Viewer styles (react-pdf)
+   ═══════════════════════════════════════════ */
+
+/* Text layer — positions selectable text over the PDF canvas */
+.react-pdf__Page__textContent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0.2;
+}
+
+.react-pdf__Page__textContent > span {
+  position: absolute;
+  color: transparent;
+  transform-origin: 0% 0%;
+  pointer-events: auto;
+  cursor: text;
+  white-space: pre;
+}
+
+.react-pdf__Page__textContent mark {
+  background: transparent;
+  color: transparent;
+}
+
+/* Annotation layer — makes links clickable */
+.react-pdf__Page__annotations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.react-pdf__Page__annotations.annotationLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.react-pdf__Page__annotations a {
+  pointer-events: auto;
+}
+
+/* Canvas wrapper */
+.react-pdf__Page__canvas {
+  display: block;
+  user-select: none;
+}
+
+/* Page wrapper — positions layers */
+.react-pdf__Page {
+  position: relative;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.react-pdf__Page__textContent,
+.react-pdf__Page__annotations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Document wrapper */
+.react-pdf__Document {
+  display: inline-block;
 }

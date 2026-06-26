@@ -1,11 +1,12 @@
 import type { PaperListItem } from '../../types';
-import { ExternalLink, FileText, MessageCircle, Pencil, Trash2 } from 'lucide-react';
+import { BookOpen, ExternalLink, FileText, MessageCircle, Pencil, Trash2 } from 'lucide-react';
 
 interface Props {
   paper: PaperListItem;
   onChat: (paperId: number) => void;
   onEdit: (paperId: number) => void;
   onDelete: (paperId: number) => void;
+  onView: (paper: PaperListItem) => void;
 }
 
 const statusMap: Record<string, { label: string; className: string }> = {
@@ -17,7 +18,7 @@ const statusMap: Record<string, { label: string; className: string }> = {
   ERROR: { label: '错误', className: 'bg-red-50 text-red-700' },
 };
 
-export function PaperCard({ paper, onChat, onEdit, onDelete }: Props) {
+export function PaperCard({ paper, onChat, onEdit, onDelete, onView }: Props) {
   const status = statusMap[paper.status] ?? { label: paper.status, className: 'bg-[var(--color-primary-soft)] text-[var(--color-ink-mute)]' };
 
   return (
@@ -77,6 +78,10 @@ export function PaperCard({ paper, onChat, onEdit, onDelete }: Props) {
           >
             <MessageCircle size={13} />
             <span className="button-label">对话</span>
+          </button>
+          <button onClick={() => onView(paper)} className="paper-card-action-button">
+            <BookOpen size={13} />
+            <span className="button-label">浏览</span>
           </button>
           <button onClick={() => onEdit(paper.id)} className="paper-card-action-button">
             <Pencil size={13} />

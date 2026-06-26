@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PaperCard } from './PaperCard';
 import { PaperEditPanel } from './PaperEditPanel';
+import { PaperImport } from './PaperImport';
 import { PaperUpload } from './PaperUpload';
-import { deletePaper, getChatSessions, getPaper, getPapers, getTags, updatePaper } from '../../api/client';
+import { PaperViewer } from './PaperViewer';
+import { StatsDashboard } from './StatsDashboard';
+import { deletePaper, getChatSessions, getPaper, getPaperStatus, getPapers, getTags, updatePaper } from '../../api/client';
 import { useChatStore } from '../../store/chatStore';
 import type { ChatSession, PaperListItem, PaperSummary, PaperUpdateRequest } from '../../types';
 import type { View } from '../layout/Layout';
-import { Filter, Loader2, Library, MessageCircle, Plus, RotateCcw, Search, X } from 'lucide-react';
+import { BarChart3, Filter, Loader2, Library, MessageCircle, Plus, RotateCcw, Search, X } from 'lucide-react';
 
 interface Props {
   onNavigate: (view: View) => void;
@@ -22,9 +25,11 @@ export function LibraryPage({ onNavigate }: Props) {
   const [tag, setTag] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [editingPaper, setEditingPaper] = useState<PaperSummary | null>(null);
+  const [viewingPaper, setViewingPaper] = useState<PaperListItem | null>(null);
   const [chatPaper, setChatPaper] = useState<PaperListItem | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const openSession = useChatStore((state) => state.openSession);
   const createAndOpenSession = useChatStore((state) => state.createAndOpenSession);
 
@@ -58,6 +63,41 @@ export function LibraryPage({ onNavigate }: Props) {
       void loadTags();
     }, 0);
   }, [loadPapers, loadTags]);
+
+  // Poll papers that are still processing (not READY / ERROR)
+  useEffect(() => {
+    const processingPapers = papers.filter(
+      (p) => p.status !== 'READY' && p.status !== 'ERROR'
+    );
+    if (processingPapers.length === 0) return;
+
+    const interval = window.setInterval(async () => {
+      let changed = false;
+      const updated = [...papers];
+      for (const paper of processingPapers) {
+        try {
+          const { status } = await getPaperStatus(paper.id);
+          const idx = updated.findIndex((p) => p.id === paper.id);
+          if (idx >= 0 && updated[idx].status !== status) {
+            updated[idx] = { ...updated[idx], status };
+            changed = true;
+          }
+        } catch {
+          // ignore individual failures during polling
+        }
+      }
+      if (changed) {
+        setPapers(updated);
+        // If all papers are now terminal, reload fully
+        if (updated.every((p) => p.status === 'READY' || p.status === 'ERROR')) {
+          await loadPapers();
+          await loadTags();
+        }
+      }
+    }, 3000);
+
+    return () => window.clearInterval(interval);
+  }, [papers]);
 
   const handleChat = async (paperId: number) => {
     const paper = papers.find((item) => item.id === paperId);
@@ -160,8 +200,22 @@ export function LibraryPage({ onNavigate }: Props) {
             <h1 className="page-title">文献库</h1>
             <p className="page-subtitle">管理已上传论文、标签、笔记和可追溯问答上下文。</p>
           </div>
-          <PaperUpload onUploaded={handleUploaded} />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowStats((prev) => !prev)}
+              className="icon-button"
+              aria-label={showStats ? '隐藏统计' : '数据统计'}
+              title={showStats ? '隐藏统计' : '数据统计'}
+            >
+              <BarChart3 size={17} />
+            </button>
+            <PaperImport onImported={handleUploaded} />
+            <PaperUpload onUploaded={handleUploaded} />
+          </div>
         </header>
+
+        {showStats && <StatsDashboard />}
 
         <div className="surface library-filter-bar mb-6 grid gap-3 p-3 lg:grid-cols-[1fr_160px_160px_auto]">
           <label className="relative">
@@ -221,6 +275,7 @@ export function LibraryPage({ onNavigate }: Props) {
                   <div className="skeleton skeleton-btn" />
                   <div className="skeleton skeleton-btn" />
                   <div className="skeleton skeleton-btn" />
+                  <div className="skeleton skeleton-btn" />
                 </div>
               </div>
             ))}
@@ -253,6 +308,7 @@ export function LibraryPage({ onNavigate }: Props) {
                 onChat={handleChat}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onView={setViewingPaper}
               />
             ))}
           </div>
@@ -265,6 +321,10 @@ export function LibraryPage({ onNavigate }: Props) {
             onClose={() => setEditingPaper(null)}
             onSave={handleSave}
           />
+        )}
+
+        {viewingPaper && (
+          <PaperViewer paper={viewingPaper} onClose={() => setViewingPaper(null)} />
         )}
 
         {chatPaper && (

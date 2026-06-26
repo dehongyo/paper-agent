@@ -3,11 +3,13 @@ import { discoverPapers } from '../../api/client';
 import type { DiscoveryResult } from '../../types';
 import { ArrowRight, ExternalLink, FileText, Loader2, Search } from 'lucide-react';
 
-type DiscoverySource = 'all' | 'arxiv' | 'semantic-scholar';
+type DiscoverySource = 'all' | 'arxiv' | 'semantic-scholar' | 'pubmed' | 'dblp';
 
 const sourceLabel: Record<string, string> = {
   arxiv: 'arXiv',
   'semantic-scholar': 'Semantic Scholar',
+  pubmed: 'PubMed',
+  dblp: 'DBLP',
 };
 
 const quickSearches = [
@@ -76,6 +78,8 @@ export function DiscoveryPage() {
             <option value="all">全部来源</option>
             <option value="arxiv">arXiv</option>
             <option value="semantic-scholar">Semantic Scholar</option>
+            <option value="pubmed">PubMed</option>
+            <option value="dblp">DBLP</option>
           </select>
           <button type="button" onClick={() => void search()} disabled={!query.trim() || isLoading} className="primary-button">
             {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
