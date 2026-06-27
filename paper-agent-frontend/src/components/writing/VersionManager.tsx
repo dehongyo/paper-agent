@@ -18,6 +18,7 @@ export function VersionManager({ topic, outline, draft, references, onLoad, onCl
   const [error, setError] = useState<string | null>(null);
   const [savingVersion, setSavingVersion] = useState(false);
   const [loadingVersionId, setLoadingVersionId] = useState<number | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const loadVersions = useCallback(async () => {
     try {
@@ -32,16 +33,22 @@ export function VersionManager({ topic, outline, draft, references, onLoad, onCl
   }, []);
 
   useEffect(() => {
-    void loadVersions();
+    const timer = window.setTimeout(() => {
+      void loadVersions();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadVersions]);
 
   const handleSave = async () => {
     if (!topic.trim() || !draft.trim()) return;
     setSavingVersion(true);
     setError(null);
+    setSaved(false);
     try {
       await saveWritingVersion({ topic, outline, draft, references });
       await loadVersions();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存版本失败');
     } finally {
@@ -79,7 +86,7 @@ export function VersionManager({ topic, outline, draft, references, onLoad, onCl
       onClick={onClose}
     >
       <div
-        className="surface-solid modal-dialog w-full max-w-lg p-5 shadow-[var(--shadow-lg)]"
+        className="surface-solid modal-dialog overflow-hidden rounded-[var(--radius-lg)] w-full max-w-lg p-5 shadow-[var(--shadow-lg)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 mb-5">
@@ -91,16 +98,21 @@ export function VersionManager({ topic, outline, draft, references, onLoad, onCl
             type="button"
             onClick={() => void handleSave()}
             disabled={savingVersion || !topic.trim() || !draft.trim()}
-            className="secondary-button min-h-[36px] text-xs"
+            className="primary-button min-h-[36px] text-xs"
           >
             {savingVersion ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            保存版本
+            保存当前
           </button>
         </div>
 
         {error && (
           <div className="mb-4 rounded-[var(--radius-sm)] bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
             {error}
+          </div>
+        )}
+        {saved && (
+          <div className="mb-4 rounded-[var(--radius-sm)] bg-green-50 px-3 py-2 text-xs font-semibold text-green-700">
+            版本已保存。
           </div>
         )}
 
@@ -110,7 +122,7 @@ export function VersionManager({ topic, outline, draft, references, onLoad, onCl
             加载版本列表...
           </div>
         ) : versions.length === 0 ? (
-          <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-primary-soft)] px-4 py-8 text-center text-sm text-[var(--color-ink-mute)]">
+          <div className="writing-empty-state rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-primary-soft)] px-4 py-8 text-center text-sm text-[var(--color-ink-mute)]">
             暂无保存的版本。
           </div>
         ) : (

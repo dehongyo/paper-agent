@@ -12,7 +12,7 @@ export function ExportPanel({ markdown, latex }: Props) {
   };
 
   return (
-    <section className="surface p-4">
+    <section className="surface">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-[var(--color-ink)]">导出</h2>
@@ -22,24 +22,24 @@ export function ExportPanel({ markdown, latex }: Props) {
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--surface)] p-3">
+        <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--surface-warm)] p-3">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-bold text-[var(--color-ink)]">Markdown</span>
-            <button type="button" onClick={() => void copy(markdown)} className="icon-button" aria-label="复制 Markdown">
-              <Clipboard size={15} />
+            <span className="text-xs font-semibold tracking-[0.02em] text-[var(--color-ink-mute)]">MARKDOWN</span>
+            <button type="button" onClick={() => void copy(markdown)} className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-mute)] transition hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-ink)]" aria-label="复制 Markdown">
+              <Clipboard size={14} />
             </button>
           </div>
-          <pre className="max-h-52 overflow-auto whitespace-pre-wrap text-xs leading-5 text-[var(--color-ink-soft)]">{markdown || '暂无 Markdown 导出内容。'}</pre>
+          <pre className="max-h-44 overflow-auto whitespace-pre-wrap font-mono text-xs leading-relaxed text-[var(--color-ink-soft)]">{markdown || '暂无 Markdown 导出内容。'}</pre>
         </div>
 
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--surface)] p-3">
+        <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--surface-warm)] p-3">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-bold text-[var(--color-ink)]">LaTeX</span>
-            <button type="button" onClick={() => void copy(latex)} className="icon-button" aria-label="复制 LaTeX">
-              <Clipboard size={15} />
+            <span className="text-xs font-semibold tracking-[0.02em] text-[var(--color-ink-mute)]">LATEX</span>
+            <button type="button" onClick={() => void copy(latex)} className="rounded-[var(--radius-sm)] p-1.5 text-[var(--color-ink-mute)] transition hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-ink)]" aria-label="复制 LaTeX">
+              <Clipboard size={14} />
             </button>
           </div>
-          <pre className="max-h-52 overflow-auto whitespace-pre-wrap text-xs leading-5 text-[var(--color-ink-soft)]">{latex || '暂无 LaTeX 导出内容。'}</pre>
+          <pre className="max-h-44 overflow-auto whitespace-pre-wrap font-mono text-xs leading-relaxed text-[var(--color-ink-soft)]">{latex || '暂无 LaTeX 导出内容。'}</pre>
         </div>
       </div>
     </section>

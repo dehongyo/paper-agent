@@ -8,8 +8,22 @@ export default defineConfig({
   base: './',
   server: {
     port: 5173,
+    cors: {
+      origin: '*',
+      methods: '*',
+      allowedHeaders: '*',
+    },
     proxy: {
-      '/api': apiTarget
+      '/api': {
+        target: apiTarget,
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.removeHeader('origin');
+            proxyReq.removeHeader('referer');
+          });
+        },
+      }
     }
   }
 })

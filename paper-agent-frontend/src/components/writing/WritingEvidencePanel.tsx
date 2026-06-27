@@ -6,14 +6,14 @@ interface Props {
 
 export function WritingEvidencePanel({ evidence }: Props) {
   return (
-    <section className="surface p-4">
-      <div className="mb-3">
+    <section className="surface">
+      <div className="mb-4">
         <h2 className="text-sm font-bold text-[var(--color-ink)]">证据来源</h2>
         <p className="mt-1 text-xs leading-5 text-[var(--color-ink-mute)]">草稿中的来源编号对应这些本地文献片段。</p>
       </div>
 
       {evidence.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-[var(--color-border)] p-4 text-sm leading-6 text-[var(--color-ink-mute)]">
+        <p className="writing-empty-state rounded-lg border border-[var(--color-border)] p-4 text-sm leading-6 text-[var(--color-ink-mute)]">
           生成大纲或草稿后，这里会显示证据片段。
         </p>
       ) : (

@@ -20,6 +20,7 @@ export function LibraryPage({ onNavigate }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paperSaved, setPaperSaved] = useState(false);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const [tag, setTag] = useState('');
@@ -142,9 +143,12 @@ export function LibraryPage({ onNavigate }: Props) {
   const handleSave = async (payload: PaperUpdateRequest) => {
     if (!editingPaper) return;
     setIsSaving(true);
+    setPaperSaved(false);
     try {
       await updatePaper(editingPaper.id, payload);
       setEditingPaper(null);
+      setPaperSaved(true);
+      setTimeout(() => setPaperSaved(false), 2000);
       await loadPapers();
       await loadTags();
     } catch (err) {
@@ -290,6 +294,11 @@ export function LibraryPage({ onNavigate }: Props) {
             </button>
           </div>
         )}
+        {paperSaved && (
+          <div className="surface-solid mb-5 p-4 text-sm font-semibold text-green-700">
+            论文信息已保存。
+          </div>
+        )}
 
         {!isLoading && !error && papers.length === 0 && (
           <div className="surface library-empty-state flex flex-col items-center gap-3 text-[var(--color-ink-mute)]">
@@ -329,7 +338,7 @@ export function LibraryPage({ onNavigate }: Props) {
 
         {chatPaper && (
           <div className="fixed inset-0 z-50 flex items-center justify-center session-picker-backdrop bg-black/20 px-4 backdrop-blur-sm">
-            <div className="surface-solid session-picker-dialog w-full max-w-xl p-5 shadow-[var(--shadow-lg)]">
+            <div className="surface-solid session-picker-dialog overflow-hidden rounded-[var(--radius-lg)] w-full max-w-xl p-5 shadow-[var(--shadow-lg)]">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="eyebrow">PAPER CHAT HISTORY</p>
@@ -355,7 +364,7 @@ export function LibraryPage({ onNavigate }: Props) {
                 )}
 
                 {!isLoadingSessions && chatSessions.length === 0 && (
-                  <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-primary-soft)] px-4 py-8 text-center text-sm text-[var(--color-ink-mute)]">
+                  <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-primary-soft)] px-4 py-8 text-center text-sm text-[var(--color-ink-mute)]">
                     这篇论文还没有历史对话。
                   </div>
                 )}

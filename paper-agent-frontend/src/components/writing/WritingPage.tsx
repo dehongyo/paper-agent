@@ -32,6 +32,7 @@ export function WritingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showVersions, setShowVersions] = useState(false);
+  const [versionSaved, setVersionSaved] = useState(false);
 
   const buildRequest = (): WritingRequest => ({
     topic,
@@ -66,7 +67,6 @@ export function WritingPage() {
 
   const handleSaveVersion = async () => {
     if (!topic.trim() || !result.draft.trim()) return;
-    setIsLoading(true);
     setError(null);
     try {
       await saveWritingVersion({
@@ -75,10 +75,10 @@ export function WritingPage() {
         draft: result.draft,
         references: result.references,
       });
+      setVersionSaved(true);
+      setTimeout(() => setVersionSaved(false), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存版本失败');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -93,14 +93,14 @@ export function WritingPage() {
 
   return (
     <div className="page-shell">
-      <div className="page-content">
+      <div className="page-content writing-page-content">
         <header className="page-header">
           <div>
             <p className="eyebrow">WRITING STUDIO</p>
             <h1 className="page-title">写作工作台</h1>
             <p className="page-subtitle">基于本地文献证据生成综述大纲、草稿、参考文献和 Markdown/LaTeX 导出。</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="writing-page-actions">
             <button
               type="button"
               onClick={() => void handleSaveVersion()}
@@ -126,9 +126,14 @@ export function WritingPage() {
             {error}
           </div>
         )}
+        {versionSaved && (
+          <div className="surface-solid mb-5 p-4 text-sm font-semibold text-green-700">
+            版本已保存。
+          </div>
+        )}
 
-        <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)_300px]">
-          <aside className="grid content-start gap-5 writing-config">
+        <div className="writing-workspace-grid">
+          <aside className="writing-config">
             <WritingConfigPanel
               topic={topic}
               writingType={writingType}
@@ -152,7 +157,7 @@ export function WritingPage() {
             />
           </aside>
 
-          <main className="grid min-w-0 content-start gap-5 writing-editor">
+          <main className="writing-editor">
             {isLoading && !result.outline && !result.draft ? (
               <div className="surface p-5">
                 <div className="skeleton skeleton-line-lg" style={{ height: 16, marginBottom: 20 }} />
@@ -168,7 +173,7 @@ export function WritingPage() {
                 onDraftChange={(draft) => setResult((prev) => ({ ...prev, draft }))}
               />
             )}
-            <div className="flex justify-end">
+            <div className="writing-export-action">
               <button type="button" onClick={() => void run('export')} disabled={isLoading || !result.draft.trim()} className="secondary-button">
                 重新生成导出
               </button>

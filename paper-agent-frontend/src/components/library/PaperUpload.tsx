@@ -57,7 +57,7 @@ export function PaperUpload({ onUploaded }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-overlay bg-black/24 p-4 backdrop-blur-sm" onClick={() => setOpen(false)}>
       <div
-        className="surface-solid modal-dialog w-full max-w-md p-5 shadow-[var(--shadow-lg)]"
+        className="surface-solid modal-dialog overflow-hidden rounded-[var(--radius-lg)] w-full max-w-md p-5 shadow-[var(--shadow-lg)]"
         onClick={(event) => event.stopPropagation()}
         onDrop={handleDrop}
         onDragOver={(event) => event.preventDefault()}
@@ -75,7 +75,7 @@ export function PaperUpload({ onUploaded }: Props) {
           </button>
         </div>
 
-        <div className="flex flex-col items-center gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-strong)] bg-[var(--color-primary-soft)] p-8">
+        <div className="flex flex-col items-center gap-4 rounded-[var(--radius-sm)] border border-[var(--color-border-strong)] bg-[var(--color-primary-soft)] p-8">
           {selectedFile ? (
             <div className="flex max-w-full items-center gap-2 text-sm">
               <FileText size={22} className="shrink-0 text-[var(--color-ink)]" />

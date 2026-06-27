@@ -400,6 +400,21 @@ button:disabled {
   line-height: 1.7;
 }
 
+.page-content-narrow > .surface.flex.flex-col {
+  min-height: 268px;
+}
+
+.page-content-narrow > .surface.flex.flex-col .quick-chip {
+  border-color: color-mix(in oklab, var(--color-border), transparent 45%);
+  border-radius: 14px;
+  padding: 12px 18px;
+}
+
+.page-content-narrow > .surface.flex.flex-col .grid.w-full.max-w-lg {
+  gap: 12px;
+  margin-top: 20px;
+}
+
 /* ═══════════════════════════════════════════
    Surface panels — frosted glass cards
    ═══════════════════════════════════════════ */
@@ -695,7 +710,7 @@ select.control {
 
 .paper-card-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(72px, 1fr));
+  grid-template-columns: repeat(3, minmax(88px, 1fr));
   gap: 6px;
 }
 
@@ -759,6 +774,12 @@ select.control {
 
 .paper-card-action-button > svg {
   flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .paper-card-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -1196,6 +1217,52 @@ select.control {
    Writing workspace — refined three-column layout
    ═══════════════════════════════════════════ */
 
+.writing-page-content {
+  max-width: 1036px;
+}
+
+.writing-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.writing-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(360px, 1fr) minmax(0, 300px);
+  align-items: start;
+  gap: 24px;
+}
+
+.writing-config,
+.writing-editor,
+.writing-evidence {
+  min-width: 0;
+}
+
+.writing-config {
+  display: grid;
+  align-content: start;
+  gap: 20px;
+}
+
+.writing-editor {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.writing-export-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.writing-workspace-grid .surface {
+  min-width: 0;
+}
+
 .writing-config .surface {
   border-color: var(--glass-border-strong);
   border-radius: var(--radius-md);
@@ -1203,12 +1270,15 @@ select.control {
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  padding: 20px;
 }
 
 .writing-config .surface h2 {
   color: var(--fg);
   font-size: 14px;
   font-weight: 700;
+  margin-top: 0;
+  line-height: 1.3;
 }
 
 .writing-editor .surface {
@@ -1218,6 +1288,7 @@ select.control {
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  padding: 20px;
 }
 
 .writing-editor .surface textarea {
@@ -1239,6 +1310,20 @@ select.control {
   color: var(--muted);
 }
 
+.writing-textarea {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.writing-textarea-outline {
+  min-height: 88px;
+}
+
+.writing-textarea-draft {
+  min-height: 104px;
+}
+
 .writing-evidence .surface {
   border-color: var(--glass-border-strong);
   border-radius: var(--radius-md);
@@ -1246,6 +1331,7 @@ select.control {
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  padding: 20px;
 }
 
 .writing-evidence article {
@@ -1259,15 +1345,15 @@ select.control {
 
 .writing-section-header {
   position: relative;
-  padding-left: 14px;
+  padding-left: 16px;
 }
 
 .writing-section-header::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 4px;
-  bottom: 4px;
+  top: 2px;
+  bottom: 2px;
   width: 3px;
   border-radius: 999px;
   background: var(--fg);
@@ -1293,7 +1379,7 @@ select.control {
 }
 
 .writing-empty-state {
-  border: 1px dashed var(--color-border) !important;
+  border: 1px solid var(--color-border) !important;
   background: var(--color-primary-soft) !important;
 }
 
@@ -1317,6 +1403,34 @@ select.control {
 
 .writing-reference-item:hover {
   border-color: var(--glass-border-strong);
+}
+
+@media (max-width: 1180px) {
+  .writing-page-content {
+    max-width: 920px;
+  }
+
+  .writing-workspace-grid {
+    grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  }
+
+  .writing-evidence {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 900px) {
+  .writing-page-content {
+    max-width: 680px;
+  }
+
+  .writing-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .writing-evidence {
+    grid-column: auto;
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -1346,6 +1460,15 @@ select.control {
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.96); }
   to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes draft-appear {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.draft-content-enter {
+  animation: draft-appear 300ms var(--ease-spring) both;
 }
 
 /* View content entrance */
@@ -1472,17 +1595,202 @@ select.control {
   --accent-on: #1a1a1b;
   --accent-hover: #f0efed;
   --accent-active: #d4d2ce;
-  --color-primary-soft: rgba(255,255,255,0.06);
-  --color-accent-soft: rgba(255,255,255,0.04);
+  --color-primary-soft: rgba(255,255,255,0.08);
+  --color-accent-soft: rgba(255,255,255,0.05);
   --glass-border: rgba(255,255,255,0.08);
   --glass-border-strong: rgba(255,255,255,0.12);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.15);
-  --shadow-md: 0 4px 20px rgba(0,0,0,0.2);
-  --shadow-lg: 0 16px 48px rgba(0,0,0,0.3);
-  --shadow-button: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.25);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.4);
+  --shadow-button: 0 2px 8px rgba(0,0,0,0.4);
   --paper-texture: none;
-  --color-paper: rgba(36,36,37,0.78);
-  --color-paper-solid: rgba(30,30,31,0.85);
+  --color-paper: rgba(36,36,37,0.85);
+  --color-paper-solid: rgba(30,30,31,0.92);
+}
+
+/* ── Dark mode: body background ── */
+[data-theme="dark"] body {
+  background: var(--bg);
+}
+
+/* ── Dark mode: app shell + frame ── */
+[data-theme="dark"] .app-frame {
+  border-color: var(--border);
+  background: rgba(36, 36, 37, 0.6);
+}
+
+[data-theme="dark"] .main-canvas {
+  background: rgba(26, 26, 27, 0.5);
+}
+
+/* ── Dark mode: sidebar ── */
+[data-theme="dark"] .desktop-sidebar {
+  border-color: var(--border);
+  background: rgba(36, 36, 37, 0.6);
+}
+
+[data-theme="dark"] .sidebar-nav-button:hover {
+  background: var(--color-primary-soft);
+}
+
+/* ── Dark mode: surface panels ── */
+[data-theme="dark"] .surface {
+  border-color: var(--border);
+  background: var(--color-paper);
+}
+
+[data-theme="dark"] .surface-solid {
+  border-color: var(--border);
+  background: var(--color-paper-solid);
+}
+
+/* ── Dark mode: chat ── */
+[data-theme="dark"] .chat-composer,
+[data-theme="dark"] .chat-header {
+  border-color: var(--border);
+  background: rgba(36, 36, 37, 0.7);
+}
+
+[data-theme="dark"] .scope-switcher {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .message-bubble {
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .message-bubble-assistant {
+  background: var(--color-paper);
+}
+
+[data-theme="dark"] .message-bubble-user {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Dark mode: controls ── */
+[data-theme="dark"] .control {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg);
+}
+
+[data-theme="dark"] .control:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+[data-theme="dark"] .control:focus {
+  border-color: var(--fg);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08);
+}
+
+/* ── Dark mode: buttons ── */
+[data-theme="dark"] .secondary-button {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg);
+}
+
+[data-theme="dark"] .secondary-button:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .icon-button {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg-2);
+}
+
+[data-theme="dark"] .icon-button:hover {
+  border-color: var(--fg);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--fg);
+}
+
+[data-theme="dark"] .danger-button {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg-2);
+}
+
+[data-theme="dark"] .danger-button:hover {
+  border-color: var(--danger);
+  background: rgba(220, 38, 38, 0.12);
+  color: #f87171;
+}
+
+/* ── Dark mode: other components ── */
+[data-theme="dark"] .quick-chip {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg-2);
+}
+
+[data-theme="dark"] .quick-chip:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--fg);
+}
+
+[data-theme="dark"] .playbook-card {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="dark"] .empty-hero-panel {
+  border-color: var(--border);
+  background: var(--color-paper);
+}
+
+[data-theme="dark"] .paper-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .paper-card-action-button {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg);
+}
+
+[data-theme="dark"] .paper-card-action-button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .paper-card-danger-action {
+  border-color: rgba(248, 113, 113, 0.32);
+  background: rgba(220, 38, 38, 0.1);
+  color: #f87171;
+}
+
+[data-theme="dark"] .paper-card-danger-action:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(220, 38, 38, 0.16);
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .writing-empty-state {
+  border-color: var(--border) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="dark"] .mobile-tabbar {
+  border-color: var(--border);
+  background: rgba(36, 36, 37, 0.88);
+}
+
+[data-theme="dark"] .pill-ready {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--fg);
+}
+
+[data-theme="dark"] ::selection {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--fg);
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb {

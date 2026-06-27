@@ -64,15 +64,18 @@ export function PaperViewer({ paper, onClose }: Props) {
 
   // Reset state when paper changes
   useEffect(() => {
-    setNumPages(0);
-    setPageNumber(1);
-    setScale(1.2);
-    setIsLoading(true);
-    setError(null);
-    setRetryKey(0);
-    setRotation(0);
-    setShowHighlights(true);
-    setIsHighlightMode(false);
+    const timer = window.setTimeout(() => {
+      setNumPages(0);
+      setPageNumber(1);
+      setScale(1.2);
+      setIsLoading(true);
+      setError(null);
+      setRetryKey(0);
+      setRotation(0);
+      setShowHighlights(true);
+      setIsHighlightMode(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [paper.id]);
 
   // Persist highlights

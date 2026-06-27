@@ -83,7 +83,7 @@ export function SearchPanel({ onSelectPaper }: Props) {
         )}
 
         {!isLoading && hasSearched && results.length === 0 && !error && (
-          <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border)] bg-[var(--color-primary-soft)] p-4 text-center text-xs text-[var(--color-ink-mute)]">
+          <div className="rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-primary-soft)] p-4 text-center text-xs text-[var(--color-ink-mute)]">
             没有找到相关内容。
           </div>
         )}
