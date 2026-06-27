@@ -191,3 +191,41 @@ export interface PaperStats {
   totalChatSessions: number;
   totalChatMessages: number;
 }
+
+// ── Review ──
+
+export interface ReviewTemplate {
+  id: number;
+  name: string;
+  type: 'builtin' | 'custom';
+  sourceFilename: string | null;
+  contentLength: number;
+  createdAt: string;
+}
+
+export interface ReviewStartRequest {
+  paperId: number;
+  templateId: number;
+}
+
+export interface ReviewContinueRequest {
+  sessionId: number;
+  message: string;
+}
+
+export interface ReviewSessionResponse {
+  id: number;
+  paperId: number;
+  paperTitle: string;
+  templateId: number;
+  templateName: string;
+  status: 'in_progress' | 'completed' | 'error';
+  resultText: string | null;
+  createdAt: string;
+}
+
+export interface ReviewStartEvent {
+  type: 'text' | 'done' | 'error';
+  content: string;
+  message: string | null;
+}
