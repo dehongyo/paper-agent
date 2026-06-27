@@ -20,7 +20,6 @@ export function ReviewPage() {
   // Review state
   const [reviewing, setReviewing] = useState(false);
   const [resultText, setResultText] = useState('');
-  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Follow-up
@@ -66,7 +65,6 @@ export function ReviewPage() {
     setResultText('');
     setFollowUpHistory([]);
     setReviewing(true);
-    setCurrentSessionId(null);
 
     abortRef.current = streamReview(
       { paperId: selectedPaperId, templateId: selectedTemplateId },
@@ -92,7 +90,6 @@ export function ReviewPage() {
     const sessions = await listReviewSessions();
     const latestSession = sessions.find(s => s.status === 'completed');
     if (!latestSession) { setError('No completed review session found'); return; }
-    setCurrentSessionId(latestSession.id);
     setFollowUpLoading(true);
     setFollowUpHistory((prev) => [...prev, { role: 'user' as const, content: followUp }]);
     const q = followUp;
