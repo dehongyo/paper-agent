@@ -229,3 +229,37 @@ export interface ReviewStartEvent {
   content: string;
   message: string | null;
 }
+
+// ── Autonomous Writing ──
+
+export interface AutonomousWritingPhaseEvent {
+  phase: string;
+  status: 'in_progress' | 'completed' | 'error';
+  data: any;
+}
+
+export interface AutonomousWritingSessionResponse {
+  id: number;
+  topic: string;
+  currentPhase: string;
+  status: string;
+  topicAnalysisJson: string | null;
+  searchResultsJson: string | null;
+  importedPaperIds: string | null;
+  outline: string | null;
+  draft: string | null;
+  finalDraft: string | null;
+  createdAt: string;
+}
+
+export interface SearchPaperResult {
+  externalId: string;
+  source: string;
+  title: string;
+  authors: string[];
+  year: string | null;
+  abstractText: string | null;
+  landingUrl: string | null;
+  pdfUrl: string | null;
+  doi: string | null;
+}
