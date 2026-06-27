@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS review_template (
     type VARCHAR(50) NOT NULL DEFAULT 'custom',
     source_filename VARCHAR(255),
     content_text TEXT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS review_session (
@@ -87,5 +87,8 @@ CREATE TABLE IF NOT EXISTS review_session (
     template_id BIGINT NOT NULL REFERENCES review_template(id) ON DELETE RESTRICT,
     result_text TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'in_progress',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_review_session_paper_id ON review_session (paper_id);
+CREATE INDEX IF NOT EXISTS idx_review_session_template_id ON review_session (template_id);
