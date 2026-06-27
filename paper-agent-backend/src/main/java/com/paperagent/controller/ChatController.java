@@ -1,7 +1,7 @@
 package com.paperagent.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.paperagent.dto.ChatMessageResponse;
 import com.paperagent.dto.ChatRequest;
 import com.paperagent.dto.ChatSessionCreateRequest;
@@ -134,7 +134,7 @@ public class ChatController {
     private String toJson(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to serialize chat evidence", e);
         }
     }

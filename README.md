@@ -94,7 +94,7 @@ cd paper-agent-backend
 如果 `JAVA_HOME` 默认不是 Java 21，先设置：
 
 ```powershell
-$env:JAVA_HOME="C:\ms-21.0.7"
+$env:JAVA_HOME="C:\jdks\openlogic-openjdk-21.0.11+10-windows-x64\openlogic-openjdk-21.0.11+10-windows-x64"
 ```
 
 后端运行在 `http://localhost:8080`。

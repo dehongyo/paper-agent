@@ -9,8 +9,7 @@ import com.paperagent.dto.WritingVersionResponse;
 import com.paperagent.entity.WritingVersion;
 import com.paperagent.repository.WritingVersionRepository;
 import com.paperagent.service.WritingOrchestratorService;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -91,7 +90,7 @@ public class WritingController {
     }
 
     private List<ReferenceItem> parseReferences(String json) {
-        try { return objectMapper.readValue(json, new TypeReference<List<ReferenceItem>>() {}); } catch (Exception e) { return List.of(); }
+        try { return objectMapper.readValue(json, objectMapper.getTypeFactory().constructCollectionType(List.class, ReferenceItem.class)); } catch (Exception e) { return List.of(); }
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
