@@ -1,4 +1,4 @@
-import { FilePenLine, Library, MessageCircle, Search } from 'lucide-react';
+import { ClipboardCheck, FilePenLine, Library, MessageCircle, Search } from 'lucide-react';
 import type { View } from './Layout';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -11,6 +11,7 @@ const navItems: Array<{ view: View; label: string; helper: string; icon: typeof 
   { view: 'chat', label: '对话', helper: '围绕论文追问', icon: MessageCircle },
   { view: 'library', label: '文献库', helper: '管理本地论文', icon: Library },
   { view: 'writing', label: '写作', helper: '综述与引用', icon: FilePenLine },
+  { view: 'review', label: '论文评审', helper: '深度审读意见', icon: ClipboardCheck },
   { view: 'discovery', label: '论文检索', helper: '外部文献链接', icon: Search },
 ];
 
