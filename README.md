@@ -23,9 +23,9 @@
 
 **后端**
 
-- Java 17
-- Spring Boot 3.3.5
-- Spring AI (OpenAI 兼容接口 → DashScope)
+- Java 21
+- Spring Boot 4.1.0
+- Spring AI 2.0.0 (OpenAI 兼容接口 → DashScope)
 - PostgreSQL 16 + pgvector
 - Apache PDFBox
 - Spring Data JPA / JDBC
@@ -57,7 +57,7 @@
 
 ### 1. 环境要求
 
-- **Java 17+**：确保 `JAVA_HOME` 指向 Java 17。Spring Boot 3.3 需要 Java 17，用 Java 8 会报 `UnsupportedClassVersionError`。
+- **Java 21+**：确保 `JAVA_HOME` 指向 Java 21。
 - **PostgreSQL + pgvector**：需要 pgvector 扩展。
 - **Node.js 18+**：前端构建需要。
 
@@ -91,10 +91,10 @@ cd paper-agent-backend
 .\mvnw.cmd spring-boot:run
 ```
 
-如果 `JAVA_HOME` 默认不是 Java 17，先设置：
+如果 `JAVA_HOME` 默认不是 Java 21，先设置：
 
 ```powershell
-$env:JAVA_HOME="C:\jdks\openjdk-17.0.2\openjdk-17.0.2"
+$env:JAVA_HOME="C:\ms-21.0.7"
 ```
 
 后端运行在 `http://localhost:8080`。

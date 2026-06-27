@@ -1,6 +1,6 @@
 package com.paperagent.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.paperagent.dto.PaperUpdateRequest;
 import com.paperagent.entity.Paper;
 import com.paperagent.repository.PaperRepository;
@@ -8,11 +8,14 @@ import com.paperagent.service.ExportService;
 import com.paperagent.service.PaperService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -27,25 +30,32 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(PaperController.class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 class PaperControllerTest {
 
     @Autowired
+    WebApplicationContext wac;
+
     MockMvc mockMvc;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
+    }
 
     @Autowired
     ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     PaperService paperService;
 
-    @MockBean
+    @MockitoBean
     PaperRepository paperRepository;
 
-    @MockBean
+    @MockitoBean
     JdbcTemplate jdbcTemplate;
 
-    @MockBean
+    @MockitoBean
     ExportService exportService;
 
     @Test
