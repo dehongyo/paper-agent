@@ -142,15 +142,6 @@ POST   /api/writing/draft               生成草稿
 POST   /api/writing/export              导出 Markdown/LaTeX
 ```
 
-## 故障排查
-
-| 问题 | 原因 | 解决 |
-|------|------|------|
-| `UnsupportedClassVersionError: class file version 61.0` | Maven 用了 Java 8 | 设置 `JAVA_HOME` 指向 Java 17+ |
-| `OpenAI API key must be set` | 未设置 DashScope Key | 设置 `DASHSCOPE_API_KEY` 环境变量 |
-| `Port 8080 was already in use` | 上次进程未退出 | `netstat -ano \| findstr 8080` 找到 PID 后 `taskkill /F /PID <pid>` |
-| 数据库连接失败 | PostgreSQL 未运行或密码错误 | 检查 `application-dev.yml` 中的连接信息 |
-
 ## 许可证
 
 暂无。正式发布前请补充 `LICENSE` 文件。
