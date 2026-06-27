@@ -19,14 +19,10 @@ import type {
   WritingVersionFull,
   WritingVersionResponse,
 } from '../types';
-
-// Dev (localhost:5173) uses relative Vite proxy; Open Design static preview uses Vite proxy at 5173
-const BASE_URL = window.location.port === '5173'
-  ? '/api'
-  : 'http://localhost:5173/api';
+import { apiUrl } from './base';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(apiUrl(path), {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
@@ -59,18 +55,18 @@ export async function updatePaper(id: number, payload: PaperUpdateRequest): Prom
 }
 
 export async function deletePaper(id: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/papers/${id}`, { method: 'DELETE' });
+  const res = await fetch(apiUrl(`/papers/${id}`), { method: 'DELETE' });
   if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
 }
 
 export async function getFullText(id: number): Promise<string> {
-  const res = await fetch(`${BASE_URL}/papers/${id}/fulltext`);
+  const res = await fetch(apiUrl(`/papers/${id}/fulltext`));
   if (!res.ok) throw new Error(`Get fulltext failed: ${res.status}`);
   return res.text();
 }
 
 export async function getPaperStatus(id: number): Promise<{ status: string }> {
-  const res = await fetch(`${BASE_URL}/papers/${id}/status`);
+  const res = await fetch(apiUrl(`/papers/${id}/status`));
   if (!res.ok) throw new Error(`Status fetch failed: ${res.status}`);
   return res.json();
 }
@@ -82,7 +78,7 @@ export async function getTags(): Promise<string[]> {
 export async function uploadPaper(file: File): Promise<PaperSummary> {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch(`${BASE_URL}/papers/upload`, { method: 'POST', body: formData });
+  const res = await fetch(apiUrl('/papers/upload'), { method: 'POST', body: formData });
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
   return res.json();
 }
@@ -141,7 +137,7 @@ export async function getChatMessages(sessionId: number): Promise<ChatMessageRes
 }
 
 export async function deleteChatSession(sessionId: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/chat/sessions/${sessionId}`, { method: 'DELETE' });
+  const res = await fetch(apiUrl(`/chat/sessions/${sessionId}`), { method: 'DELETE' });
   if (!res.ok) throw new Error(`Delete session failed: ${res.status}`);
 }
 
@@ -191,7 +187,7 @@ export async function getWritingVersion(id: number): Promise<WritingVersionFull>
 }
 
 export async function deleteWritingVersion(id: number): Promise<void> {
-  await fetch(`${BASE_URL}/writing/versions/${id}`, { method: 'DELETE' });
+  await fetch(apiUrl(`/writing/versions/${id}`), { method: 'DELETE' });
 }
 
 export function streamChat(
@@ -201,7 +197,7 @@ export function streamChat(
   onError: (err: Error) => void
 ): AbortController {
   const controller = new AbortController();
-  fetch(`${BASE_URL}/chat/stream`, {
+  fetch(apiUrl('/chat/stream'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
@@ -244,7 +240,7 @@ export function streamTraceableChat(
   onError: (err: Error) => void
 ): AbortController {
   const controller = new AbortController();
-  fetch(`${BASE_URL}/chat/rag/stream`, {
+  fetch(apiUrl('/chat/rag/stream'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),

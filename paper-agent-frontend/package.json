@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "check:api-proxy": "node scripts/check-api-proxy.mjs",
+    "check:review-stream": "node scripts/check-review-stream-parser.mjs",
     "check:layout": "node scripts/check-icon-text-layout.mjs",
     "check:style": "node scripts/check-agentic-design.mjs",
     "lint": "eslint .",

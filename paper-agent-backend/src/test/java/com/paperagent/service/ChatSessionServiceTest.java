@@ -1,6 +1,7 @@
 package com.paperagent.service;
 
 import com.paperagent.dto.ChatSessionCreateRequest;
+import com.paperagent.dto.ConversationContext;
 import com.paperagent.entity.ChatMessage;
 import com.paperagent.entity.ChatSession;
 import com.paperagent.repository.ChatMessageRepository;
@@ -50,6 +51,32 @@ class ChatSessionServiceTest {
     }
 
     @Test
+    void listsAllPaperSessionsWhenPaperScopeHasNoSelectedPaper() {
+        ChatSession first = ChatSession.builder()
+                .id(1L)
+                .title("Paper one discussion")
+                .scope(ChatSession.Scope.PAPER)
+                .paperId(2L)
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .updatedAt(LocalDateTime.now())
+                .build();
+        ChatSession second = ChatSession.builder()
+                .id(2L)
+                .title("Paper two discussion")
+                .scope(ChatSession.Scope.PAPER)
+                .paperId(9L)
+                .createdAt(LocalDateTime.now().minusDays(2))
+                .updatedAt(LocalDateTime.now().minusHours(1))
+                .build();
+        when(sessionRepository.findByScopeOrderByUpdatedAtDesc(ChatSession.Scope.PAPER))
+                .thenReturn(List.of(first, second));
+
+        assertThat(chatSessionService.listSessions("paper", null))
+                .extracting("paperId")
+                .containsExactly(2L, 9L);
+    }
+
+    @Test
     void createsPaperSessionWithDefaultTitle() {
         when(sessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> {
             ChatSession session = invocation.getArgument(0);
@@ -89,6 +116,80 @@ class ChatSessionServiceTest {
         assertThat(chatSessionService.getRecentHistory(1L))
                 .extracting("content")
                 .containsExactly("What is the method?", "It uses RAG.");
+    }
+
+    @Test
+    void returnsConversationContextWithSummaryStateAndRecentHistory() {
+        ChatSession session = ChatSession.builder()
+                .id(1L)
+                .title("Session")
+                .scope(ChatSession.Scope.LIBRARY)
+                .rollingSummary("User chose hybrid RAG as the first upgrade.")
+                .stateJson("{\"current_goal\":\"add memory\"}")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        ChatMessage user = ChatMessage.builder()
+                .id(10L)
+                .sessionId(1L)
+                .role(ChatMessage.Role.USER)
+                .content("Start the first step")
+                .messageOrder(3)
+                .createdAt(LocalDateTime.now())
+                .build();
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(messageRepository.findTop12BySessionIdOrderByMessageOrderDesc(1L))
+                .thenReturn(List.of(user));
+
+        ConversationContext context = chatSessionService.getConversationContext(1L);
+
+        assertThat(context.rollingSummary()).isEqualTo("User chose hybrid RAG as the first upgrade.");
+        assertThat(context.stateJson()).isEqualTo("{\"current_goal\":\"add memory\"}");
+        assertThat(context.recentMessages()).extracting("content").containsExactly("Start the first step");
+    }
+
+    @Test
+    void updatesConversationMemoryFields() {
+        ChatSession session = ChatSession.builder()
+                .id(1L)
+                .title("Session")
+                .scope(ChatSession.Scope.LIBRARY)
+                .updatedAt(LocalDateTime.now().minusDays(1))
+                .build();
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        chatSessionService.updateConversationMemory(
+                1L,
+                "The session is about memory.",
+                "{\"confirmed_decisions\":[\"use rolling summary\"]}"
+        );
+
+        assertThat(session.getRollingSummary()).isEqualTo("The session is about memory.");
+        assertThat(session.getStateJson()).contains("rolling summary");
+    }
+
+    @Test
+    void appendsCompletedTurnToRollingSummary() {
+        ChatSession session = ChatSession.builder()
+                .id(1L)
+                .title("Session")
+                .scope(ChatSession.Scope.LIBRARY)
+                .rollingSummary("Earlier summary.")
+                .updatedAt(LocalDateTime.now().minusDays(1))
+                .build();
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        chatSessionService.appendTurnToRollingSummary(
+                1L,
+                "How should memory work?",
+                "Use rolling summary and state JSON."
+        );
+
+        assertThat(session.getRollingSummary()).contains("Earlier summary.");
+        assertThat(session.getRollingSummary()).contains("How should memory work?");
+        assertThat(session.getRollingSummary()).contains("Use rolling summary and state JSON.");
     }
 
     @Test

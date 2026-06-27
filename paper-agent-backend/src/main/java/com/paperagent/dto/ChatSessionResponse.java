@@ -9,6 +9,8 @@ public record ChatSessionResponse(
         String title,
         String scope,
         Long paperId,
+        String rollingSummary,
+        String stateJson,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -18,6 +20,8 @@ public record ChatSessionResponse(
                 session.getTitle(),
                 session.getScope().name().toLowerCase(),
                 session.getPaperId(),
+                session.getRollingSummary(),
+                session.getStateJson(),
                 session.getCreatedAt(),
                 session.getUpdatedAt()
         );

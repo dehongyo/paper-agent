@@ -34,15 +34,32 @@ CREATE TABLE IF NOT EXISTS paper_chunks (
 CREATE INDEX IF NOT EXISTS idx_paper_chunks_embedding
     ON paper_chunks USING hnsw (embedding vector_cosine_ops);
 
+CREATE INDEX IF NOT EXISTS idx_paper_chunks_content_fts
+    ON paper_chunks USING gin (to_tsvector('simple', content));
+
+CREATE INDEX IF NOT EXISTS idx_paper_chunks_paper_id
+    ON paper_chunks (paper_id);
+
+CREATE INDEX IF NOT EXISTS idx_papers_published_at
+    ON papers (published_at);
+
 -- Chat sessions table
 CREATE TABLE IF NOT EXISTS chat_sessions (
     id          BIGSERIAL PRIMARY KEY,
     title       VARCHAR(200) NOT NULL,
     scope       VARCHAR(20) NOT NULL,
     paper_id    BIGINT REFERENCES papers(id) ON DELETE CASCADE,
+    rolling_summary TEXT,
+    state_json TEXT,
     created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE chat_sessions
+    ADD COLUMN IF NOT EXISTS rolling_summary TEXT;
+
+ALTER TABLE chat_sessions
+    ADD COLUMN IF NOT EXISTS state_json TEXT;
 
 -- Chat messages table
 CREATE TABLE IF NOT EXISTS chat_messages (
@@ -60,6 +77,28 @@ CREATE INDEX IF NOT EXISTS idx_chat_sessions_scope_paper_updated
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_order
     ON chat_messages (session_id, message_order ASC);
+
+CREATE TABLE IF NOT EXISTS conversation_memories (
+    id          BIGSERIAL PRIMARY KEY,
+    session_id  BIGINT REFERENCES chat_sessions(id) ON DELETE CASCADE,
+    scope       VARCHAR(30) NOT NULL,
+    memory_type VARCHAR(50) NOT NULL,
+    content     TEXT NOT NULL,
+    importance  DOUBLE PRECISION NOT NULL,
+    confidence  DOUBLE PRECISION NOT NULL,
+    source      VARCHAR(50),
+    created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE conversation_memories
+    ADD COLUMN IF NOT EXISTS source VARCHAR(50);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_memories_session_updated
+    ON conversation_memories (session_id, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_memories_scope_type
+    ON conversation_memories (scope, memory_type);
 
 -- Writing versions table
 CREATE TABLE IF NOT EXISTS writing_versions (

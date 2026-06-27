@@ -2,9 +2,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Upload, FileText, Play, Loader2 } from 'lucide-react';
 import { listTemplates, uploadTemplate, streamReview, listReviewSessions, continueReview } from '../../api/review';
 import { getPapers } from '../../api/client';
-import type { ReviewTemplate, ReviewSessionResponse, PaperListItem } from '../../types';
+import type { ReviewTemplate, ReviewSessionResponse, PaperListItem, ReviewStartEvent } from '../../types';
 
 type Tab = 'run' | 'history';
+
+const REVIEW_SUBMITTING = '\u6b63\u5728\u63d0\u4ea4\u8bc4\u5ba1\u4efb\u52a1...';
+const REVIEW_PREPARING = '\u6b63\u5728\u51c6\u5907\u8bc4\u5ba1...';
+const REVIEW_DONE = '\u8bc4\u5ba1\u5b8c\u6210';
+const REVIEW_CANCELED = '\u5df2\u53d6\u6d88\u8bc4\u5ba1';
+const CURRENT_SECTION_LABEL = '\u5f53\u524d\u7ae0\u8282\uff1a';
 
 export function ReviewPage() {
   const [tab, setTab] = useState<Tab>('run');
@@ -21,6 +27,10 @@ export function ReviewPage() {
   const [reviewing, setReviewing] = useState(false);
   const [resultText, setResultText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [progressMessage, setProgressMessage] = useState('');
+  const [progressSection, setProgressSection] = useState<string | null>(null);
+  const [progressCurrent, setProgressCurrent] = useState<number | null>(null);
+  const [progressTotal, setProgressTotal] = useState<number | null>(null);
 
   // Follow-up
   const [followUp, setFollowUp] = useState('');
@@ -32,6 +42,7 @@ export function ReviewPage() {
 
   const resultRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const progressPercent = progressTotal ? Math.min(100, Math.round(((progressCurrent ?? 0) / progressTotal) * 100)) : (reviewing ? 5 : 0);
 
   const loadPapers = useCallback(async () => {
     try { setPapers(await getPapers()); } catch { /* ignore */ }
@@ -64,12 +75,23 @@ export function ReviewPage() {
     setError(null);
     setResultText('');
     setFollowUpHistory([]);
+    setProgressMessage(REVIEW_SUBMITTING);
+    setProgressSection(null);
+    setProgressCurrent(null);
+    setProgressTotal(null);
     setReviewing(true);
 
     abortRef.current = streamReview(
       { paperId: selectedPaperId, templateId: selectedTemplateId },
       (text) => { setResultText((prev) => prev + text); },
+      (event: ReviewStartEvent) => {
+        setProgressMessage(event.message || '');
+        setProgressSection(event.sectionTitle);
+        setProgressCurrent(event.current);
+        setProgressTotal(event.total);
+      },
       () => {
+        setProgressMessage(REVIEW_DONE);
         setReviewing(false);
         loadSessions();
       },
@@ -82,6 +104,7 @@ export function ReviewPage() {
 
   const cancelReview = () => {
     abortRef.current?.abort();
+    setProgressMessage(REVIEW_CANCELED);
     setReviewing(false);
   };
 
@@ -187,6 +210,29 @@ export function ReviewPage() {
               )}
             </button>
 
+            {reviewing && (
+              <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-mute)] p-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-ink)]">
+                  <Loader2 size={14} className="animate-spin text-[var(--color-primary)]" />
+                  <span>{progressMessage || REVIEW_PREPARING}</span>
+                </div>
+                {progressSection && (
+                  <div className="mt-2 text-xs text-[var(--color-ink-mute)]">{CURRENT_SECTION_LABEL}{progressSection}</div>
+                )}
+                {progressTotal && (
+                  <div className="mt-3">
+                    <div className="mb-1 flex justify-between text-[11px] text-[var(--color-ink-mute)]">
+                      <span>{progressCurrent ?? 0}/{progressTotal}</span>
+                      <span>{progressPercent}%</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-white">
+                      <div className="h-full rounded-full bg-[var(--color-primary)] transition-all" style={{ width: `${progressPercent}%` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {error && (
               <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-600">{error}</div>
             )}
@@ -208,7 +254,7 @@ export function ReviewPage() {
               {reviewing && !resultText && (
                 <div className="flex items-center justify-center gap-2 py-8 text-[var(--color-ink-mute)]">
                   <Loader2 size={18} className="animate-spin" />
-                  <span className="text-sm">正在加载论文全文并生成评审...</span>
+                  <span className="text-sm">{progressMessage || REVIEW_PREPARING}</span>
                 </div>
               )}
             </div>

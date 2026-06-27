@@ -1,6 +1,7 @@
 package com.paperagent.service;
 
 import com.paperagent.dto.EvidenceChunk;
+import com.paperagent.dto.SearchFilters;
 import com.paperagent.dto.WritingRequest;
 import com.paperagent.dto.WritingResponse;
 import com.paperagent.entity.Paper;
@@ -57,7 +58,7 @@ class WritingOrchestratorServiceTest {
         Paper paper = readyPaper(1L);
         WritingRequest request = new WritingRequest("RAG", List.of(), "library", "literature-review", "zh", "standard", "gbt7714", null, null);
         when(paperService.getReadyPapersForWriting(List.of())).thenReturn(List.of(paper));
-        when(evidenceSearchService.search("RAG", null, 8)).thenReturn(List.of());
+        when(evidenceSearchService.search("RAG", SearchFilters.of(null), 8)).thenReturn(List.of());
 
         WritingResponse response = writingOrchestratorService.generateDraft(request);
 

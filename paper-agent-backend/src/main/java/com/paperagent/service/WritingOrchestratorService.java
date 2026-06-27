@@ -2,6 +2,7 @@ package com.paperagent.service;
 
 import com.paperagent.dto.EvidenceChunk;
 import com.paperagent.dto.ReferenceItem;
+import com.paperagent.dto.SearchFilters;
 import com.paperagent.dto.WritingEvidence;
 import com.paperagent.dto.WritingRequest;
 import com.paperagent.dto.WritingResponse;
@@ -101,7 +102,7 @@ public class WritingOrchestratorService {
     private List<WritingEvidence> collectEvidence(String topic, List<Long> paperIds) {
         List<EvidenceChunk> chunks;
         if (paperIds == null || paperIds.isEmpty()) {
-            chunks = evidenceSearchService.search(topic, null, EVIDENCE_LIMIT);
+            chunks = evidenceSearchService.search(topic, SearchFilters.of(null), EVIDENCE_LIMIT);
         } else {
             chunks = paperIds.stream()
                     .flatMap(paperId -> evidenceSearchService.search(topic, paperId, Math.max(3, EVIDENCE_LIMIT / paperIds.size())).stream())

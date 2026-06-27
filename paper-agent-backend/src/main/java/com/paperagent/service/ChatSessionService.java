@@ -4,6 +4,7 @@ import com.paperagent.dto.ChatHistoryMessage;
 import com.paperagent.dto.ChatMessageResponse;
 import com.paperagent.dto.ChatSessionCreateRequest;
 import com.paperagent.dto.ChatSessionResponse;
+import com.paperagent.dto.ConversationContext;
 import com.paperagent.entity.ChatMessage;
 import com.paperagent.entity.ChatSession;
 import com.paperagent.repository.ChatMessageRepository;
@@ -22,6 +23,8 @@ import java.util.List;
 public class ChatSessionService {
 
     private static final int HISTORY_LIMIT = 12;
+    private static final int SUMMARY_MAX_CHARS = 4000;
+    private static final int TURN_SNIPPET_MAX_CHARS = 600;
 
     private final ChatSessionRepository sessionRepository;
     private final ChatMessageRepository messageRepository;
@@ -69,6 +72,46 @@ public class ChatSessionService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public ConversationContext getConversationContext(Long sessionId) {
+        if (sessionId == null) {
+            return ConversationContext.empty();
+        }
+        ChatSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Chat session not found: " + sessionId));
+        return new ConversationContext(
+                session.getRollingSummary(),
+                session.getStateJson(),
+                getRecentHistory(sessionId)
+        );
+    }
+
+    @Transactional
+    public void updateConversationMemory(Long sessionId, String rollingSummary, String stateJson) {
+        ChatSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Chat session not found: " + sessionId));
+        session.setRollingSummary(blankToNull(rollingSummary));
+        session.setStateJson(blankToNull(stateJson));
+        session.setUpdatedAt(LocalDateTime.now());
+        sessionRepository.save(session);
+    }
+
+    @Transactional
+    public void appendTurnToRollingSummary(Long sessionId, String userMessage, String assistantMessage) {
+        if (sessionId == null || isBlank(userMessage) || isBlank(assistantMessage)) {
+            return;
+        }
+        ChatSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Chat session not found: " + sessionId));
+        String previous = blankToNull(session.getRollingSummary());
+        String turnSummary = "- User: " + truncate(userMessage, TURN_SNIPPET_MAX_CHARS)
+                + "\n  Assistant: " + truncate(assistantMessage, TURN_SNIPPET_MAX_CHARS);
+        String combined = previous == null ? turnSummary : previous + "\n" + turnSummary;
+        session.setRollingSummary(tail(combined, SUMMARY_MAX_CHARS));
+        session.setUpdatedAt(LocalDateTime.now());
+        sessionRepository.save(session);
+    }
+
     @Transactional
     public ChatMessageResponse appendMessage(Long sessionId, ChatMessage.Role role, String content, String evidenceJson) {
         ChatSession session = sessionRepository.findById(sessionId)
@@ -90,6 +133,26 @@ public class ChatSessionService {
     public void deleteSession(Long sessionId) {
         messageRepository.deleteBySessionId(sessionId);
         sessionRepository.deleteById(sessionId);
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private String truncate(String value, int maxChars) {
+        String trimmed = value.trim();
+        return trimmed.length() <= maxChars ? trimmed : trimmed.substring(0, maxChars) + "...";
+    }
+
+    private String tail(String value, int maxChars) {
+        if (value.length() <= maxChars) {
+            return value;
+        }
+        return value.substring(value.length() - maxChars);
     }
 
     private ChatSession.Scope parseScope(String scope) {

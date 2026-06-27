@@ -1,8 +1,5 @@
 import type { AutonomousWritingPhaseEvent, AutonomousWritingSessionResponse } from '../types';
-
-const BASE_URL = window.location.port === '5173'
-  ? '/api'
-  : 'http://localhost:5173/api';
+import { apiUrl } from './base';
 
 export function streamAutonomousWriting(
   topic: string,
@@ -10,7 +7,7 @@ export function streamAutonomousWriting(
   onError: (err: Error) => void
 ): AbortController {
   const controller = new AbortController();
-  fetch(`${BASE_URL}/writing/autonomous/start`, {
+  fetch(apiUrl('/writing/autonomous/start'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ topic }),
@@ -61,7 +58,7 @@ export async function confirmPhase(
   phase: string,
   extra?: Record<string, any>
 ): Promise<{ status: string }> {
-  const res = await fetch(`${BASE_URL}/writing/autonomous/confirm`, {
+  const res = await fetch(apiUrl('/writing/autonomous/confirm'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sessionId, phase, ...extra }),
@@ -71,11 +68,11 @@ export async function confirmPhase(
 }
 
 export async function listAutonomousSessions(): Promise<AutonomousWritingSessionResponse[]> {
-  const res = await fetch(`${BASE_URL}/writing/autonomous/sessions`);
+  const res = await fetch(apiUrl('/writing/autonomous/sessions'));
   if (!res.ok) throw new Error(`List sessions failed: ${res.status}`);
   return res.json();
 }
 
 export async function cancelAutonomousSession(id: number): Promise<void> {
-  await fetch(`${BASE_URL}/writing/autonomous/sessions/${id}/cancel`, { method: 'POST' });
+  await fetch(apiUrl(`/writing/autonomous/sessions/${id}/cancel`), { method: 'POST' });
 }

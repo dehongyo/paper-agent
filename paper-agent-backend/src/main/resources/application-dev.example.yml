@@ -7,7 +7,8 @@ spring:
 
   ai:
     openai:
-      base-url: https://dashscope.aliyuncs.com/compatible-mode
+      base-url: https://ws-iz5m88fbyi75pscd.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+      timeout: 5m
       api-key: ${DASHSCOPE_API_KEY:}
       chat:
         options:

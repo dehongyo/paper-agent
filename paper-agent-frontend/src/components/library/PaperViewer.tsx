@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import type { PaperListItem } from '../../types';
+import { apiUrl } from '../../api/base';
 import {
   ChevronLeft,
   ChevronRight,
@@ -60,7 +61,7 @@ export function PaperViewer({ paper, onClose }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
 
-  const pdfUrl = `/api/papers/${paper.id}/file`;
+  const pdfUrl = apiUrl(`/papers/${paper.id}/file`);
 
   // Reset state when paper changes
   useEffect(() => {

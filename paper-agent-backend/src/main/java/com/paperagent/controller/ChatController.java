@@ -12,6 +12,7 @@ import com.paperagent.dto.TraceableChatStreamEvent;
 import com.paperagent.entity.ChatMessage;
 import com.paperagent.service.ChatService;
 import com.paperagent.service.ChatSessionService;
+import com.paperagent.service.ConversationMemoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class ChatController {
 
     private final ChatService chatService;
     private final ChatSessionService chatSessionService;
+    private final ConversationMemoryService conversationMemoryService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/sessions")
@@ -68,8 +70,8 @@ public class ChatController {
                 request.paperId(), request.sessionId(), request.message());
 
         var history = request.sessionId() == null
-                ? List.<com.paperagent.dto.ChatHistoryMessage>of()
-                : chatSessionService.getRecentHistory(request.sessionId());
+                ? com.paperagent.dto.ConversationContext.empty()
+                : chatSessionService.getConversationContext(request.sessionId());
         saveUserMessage(request.sessionId(), request.message());
 
         StringBuilder assistant = new StringBuilder();
@@ -79,7 +81,10 @@ public class ChatController {
 
         return stream
                 .doOnNext(assistant::append)
-                .doOnComplete(() -> saveAssistantMessage(request.sessionId(), assistant.toString(), null));
+                .doOnComplete(() -> {
+                    saveAssistantMessage(request.sessionId(), assistant.toString(), null);
+                    updateConversationMemory(request.sessionId(), request.message(), assistant.toString());
+                });
     }
 
     @PostMapping
@@ -98,7 +103,10 @@ public class ChatController {
 
     @PostMapping("/rag")
     public TraceableChatResponse chatRag(@Valid @RequestBody TraceableChatRequest request) {
-        return chatService.chatWithEvidence(request.message(), request.paperId(), request.safeScope());
+        var context = request.sessionId() == null
+                ? com.paperagent.dto.ConversationContext.empty()
+                : chatSessionService.getConversationContext(request.sessionId());
+        return chatService.chatWithEvidence(request.message(), request.filters(), request.safeScope(), context);
     }
 
     @PostMapping(value = "/rag/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -107,18 +115,21 @@ public class ChatController {
                 request.paperId(), request.safeScope(), request.sessionId(), request.message());
 
         var history = request.sessionId() == null
-                ? List.<com.paperagent.dto.ChatHistoryMessage>of()
-                : chatSessionService.getRecentHistory(request.sessionId());
+                ? com.paperagent.dto.ConversationContext.empty()
+                : chatSessionService.getConversationContext(request.sessionId());
         saveUserMessage(request.sessionId(), request.message());
 
         StringBuilder assistant = new StringBuilder();
         AtomicReference<String> evidenceJson = new AtomicReference<>();
-        return chatService.chatWithEvidenceStream(request.message(), request.paperId(), request.safeScope(), history)
+        return chatService.chatWithEvidenceStream(request.message(), request.filters(), request.safeScope(), history)
                 .doOnNext(event -> {
                     if ("answer".equals(event.type())) assistant.append(event.content());
                     if ("evidence".equals(event.type())) evidenceJson.set(toJson(event.evidence()));
                 })
-                .doOnComplete(() -> saveAssistantMessage(request.sessionId(), assistant.toString(), evidenceJson.get()));
+                .doOnComplete(() -> {
+                    saveAssistantMessage(request.sessionId(), assistant.toString(), evidenceJson.get());
+                    updateConversationMemory(request.sessionId(), request.message(), assistant.toString());
+                });
     }
 
     private void saveUserMessage(Long sessionId, String content) {
@@ -129,6 +140,11 @@ public class ChatController {
     private void saveAssistantMessage(Long sessionId, String content, String evidenceJson) {
         if (sessionId == null || content == null || content.isBlank()) return;
         chatSessionService.appendMessage(sessionId, ChatMessage.Role.ASSISTANT, content, evidenceJson);
+    }
+
+    private void updateConversationMemory(Long sessionId, String userMessage, String assistantMessage) {
+        if (sessionId == null || assistantMessage == null || assistantMessage.isBlank()) return;
+        conversationMemoryService.updateAfterTurn(sessionId, userMessage, assistantMessage);
     }
 
     private String toJson(Object value) {

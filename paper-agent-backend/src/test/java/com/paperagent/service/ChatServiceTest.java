@@ -2,6 +2,8 @@ package com.paperagent.service;
 
 import com.paperagent.dto.EvidenceChunk;
 import com.paperagent.dto.ChatHistoryMessage;
+import com.paperagent.dto.ConversationContext;
+import com.paperagent.dto.SearchFilters;
 import com.paperagent.dto.TraceableChatResponse;
 import com.paperagent.dto.TraceableChatStreamEvent;
 import org.junit.jupiter.api.Test;
@@ -40,9 +42,9 @@ class ChatServiceTest {
 
     @Test
     void traceableChatReturnsInsufficientEvidenceWithoutCallingModel() {
-        when(evidenceSearchService.search("What is the method?", null, 6)).thenReturn(List.of());
+        when(evidenceSearchService.searchWithParentContext("What is the method?", SearchFilters.of(null), 6)).thenReturn(List.of());
 
-        TraceableChatResponse response = chatService.chatWithEvidence("What is the method?", null, "library");
+        TraceableChatResponse response = chatService.chatWithEvidence("What is the method?", (Long) null, "library");
 
         assertThat(response.answer()).contains("本地文献库中没有足够信息");
         assertThat(response.evidence()).isEmpty();
@@ -52,7 +54,7 @@ class ChatServiceTest {
     @Test
     void traceableChatKeepsEvidenceInResponse() {
         EvidenceChunk chunk = new EvidenceChunk(1L, 2L, "Paper", 0, "The method uses RAG.", 0.9);
-        when(evidenceSearchService.search("method", 2L, 6)).thenReturn(List.of(chunk));
+        when(evidenceSearchService.searchWithParentContext("method", SearchFilters.of(2L), 6)).thenReturn(List.of(chunk));
         when(chatClient.prompt().user(anyString()).call().content()).thenReturn("It uses RAG [1].");
 
         TraceableChatResponse response = chatService.chatWithEvidence("method", 2L, "paper");
@@ -62,8 +64,22 @@ class ChatServiceTest {
     }
 
     @Test
+    void traceableChatVerifiesDraftAnswerAgainstCitedEvidence() {
+        EvidenceChunk chunk = new EvidenceChunk(1L, 2L, "Paper", 0, "The method uses RAG.", 0.9);
+        when(evidenceSearchService.searchWithParentContext("method", SearchFilters.of(2L), 6)).thenReturn(List.of(chunk));
+        when(chatClient.prompt().user(anyString()).call().content())
+                .thenReturn("It uses RAG [1]. It also reports 99% accuracy.")
+                .thenReturn("It uses RAG [1].");
+
+        TraceableChatResponse response = chatService.chatWithEvidence("method", 2L, "paper");
+
+        assertThat(response.answer()).isEqualTo("It uses RAG [1].");
+        assertThat(response.evidence()).containsExactly(chunk);
+    }
+
+    @Test
     void traceableChatStreamReturnsInsufficientEvidenceWithoutCallingModel() {
-        when(evidenceSearchService.search("What is the method?", null, 8)).thenReturn(List.of());
+        when(evidenceSearchService.searchWithParentContext("What is the method?", SearchFilters.of(null), 8)).thenReturn(List.of());
         when(paperService.getAllPapers()).thenReturn(List.of());
 
         List<TraceableChatStreamEvent> events = chatService
@@ -81,7 +97,7 @@ class ChatServiceTest {
     @Test
     void traceableChatStreamEmitsAnswerChunksThenEvidence() {
         EvidenceChunk chunk = new EvidenceChunk(1L, 2L, "Paper", 0, "The method uses RAG.", 0.9);
-        when(evidenceSearchService.search("method", 2L, 8)).thenReturn(List.of(chunk));
+        when(evidenceSearchService.searchWithParentContext("method", SearchFilters.of(2L), 8)).thenReturn(List.of(chunk));
         when(chatClient.prompt().user(anyString()).stream().content()).thenReturn(Flux.just("It ", "uses RAG [1]."));
 
         List<TraceableChatStreamEvent> events = chatService
@@ -100,7 +116,7 @@ class ChatServiceTest {
     @Test
     void traceableChatStreamIncludesHistoryInPrompt() {
         EvidenceChunk chunk = new EvidenceChunk(1L, 2L, "Paper", 0, "The method uses RAG.", 0.9);
-        when(evidenceSearchService.search("method", 2L, 8)).thenReturn(List.of(chunk));
+        when(evidenceSearchService.searchWithParentContext("method", SearchFilters.of(2L), 8)).thenReturn(List.of(chunk));
         when(chatClient.prompt().user(org.mockito.ArgumentMatchers.contains("上一轮回答")).stream().content())
                 .thenReturn(Flux.just("answer"));
 
@@ -116,5 +132,22 @@ class ChatServiceTest {
 
         assertThat(events).isNotNull();
         assertThat(events.get(0).content()).isEqualTo("answer");
+    }
+
+    @Test
+    void chatStreamIncludesConversationSummaryAndStateInPrompt() {
+        ConversationContext context = new ConversationContext(
+                "User decided to add enterprise memory.",
+                "{\"current_goal\":\"context compression\"}",
+                List.of(new ChatHistoryMessage("user", "Previous question"))
+        );
+        when(chatClient.prompt().user(org.mockito.ArgumentMatchers.contains("context compression")).stream().content())
+                .thenReturn(Flux.just("answer"));
+
+        List<String> chunks = chatService.chatStream("What is next?", context)
+                .collectList()
+                .block();
+
+        assertThat(chunks).containsExactly("answer");
     }
 }

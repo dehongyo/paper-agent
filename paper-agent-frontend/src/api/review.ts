@@ -3,14 +3,12 @@ import type {
   ReviewStartRequest,
   ReviewContinueRequest,
   ReviewSessionResponse,
+  ReviewStartEvent,
 } from '../types';
-
-const BASE_URL = window.location.port === '5173'
-  ? '/api'
-  : 'http://localhost:5173/api';
+import { apiUrl } from './base';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(apiUrl(path), {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
@@ -20,8 +18,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
   return res.json();
 }
-
-// ── Templates ──
 
 export async function listTemplates(): Promise<ReviewTemplate[]> {
   return request<ReviewTemplate[]>('/review/templates');
@@ -34,7 +30,7 @@ export async function getTemplate(id: number): Promise<ReviewTemplate> {
 export async function uploadTemplate(file: File): Promise<ReviewTemplate> {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch(`${BASE_URL}/review/templates`, { method: 'POST', body: formData });
+  const res = await fetch(apiUrl('/review/templates'), { method: 'POST', body: formData });
   if (!res.ok) {
     const msg = await res.text().catch(() => 'Unknown error');
     throw new Error(`${res.status}: ${msg}`);
@@ -43,20 +39,19 @@ export async function uploadTemplate(file: File): Promise<ReviewTemplate> {
 }
 
 export async function deleteTemplate(id: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/review/templates/${id}`, { method: 'DELETE' });
+  const res = await fetch(apiUrl(`/review/templates/${id}`), { method: 'DELETE' });
   if (!res.ok) throw new Error(`Delete template failed: ${res.status}`);
 }
-
-// ── Review Sessions ──
 
 export function streamReview(
   req: ReviewStartRequest,
   onChunk: (text: string) => void,
+  onStatus: (event: ReviewStartEvent) => void,
   onDone: () => void,
   onError: (err: Error) => void
 ): AbortController {
   const controller = new AbortController();
-  fetch(`${BASE_URL}/review/start`, {
+  fetch(apiUrl('/review/start'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
@@ -77,31 +72,28 @@ export function streamReview(
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
 
-        // Parse SSE events
-        const lines = buffer.split('\n');
-        buffer = '';
-        for (const line of lines) {
-          if (line.startsWith('data:')) {
-            const data = line.slice(5).trim();
-            if (data) {
-              try {
-                const event = JSON.parse(data);
-                if (event.type === 'text') {
-                  onChunk(event.content);
-                } else if (event.type === 'done') {
-                  onDone();
-                  return;
-                } else if (event.type === 'error') {
-                  onError(new Error(event.message || 'Review failed'));
-                  return;
-                }
-              } catch {
-                // Partial chunk — put back in buffer
-                buffer = line + '\n';
-              }
-            }
-          } else if (line.trim()) {
-            buffer += line + '\n';
+        const events = buffer.split(/\r?\n\r?\n/);
+        buffer = events.pop() ?? '';
+        for (const rawEvent of events) {
+          const dataLines = rawEvent
+            .split(/\r?\n/)
+            .filter((line) => line.startsWith('data:'))
+            .map((line) => line.slice(5).trim());
+          if (dataLines.length === 0) continue;
+
+          const data = dataLines.join('\n');
+          if (!data) continue;
+          const event = JSON.parse(data) as ReviewStartEvent;
+          if (event.type === 'status') {
+            onStatus(event);
+          } else if (event.type === 'text') {
+            onChunk(event.content ?? '');
+          } else if (event.type === 'done') {
+            onDone();
+            return;
+          } else if (event.type === 'error') {
+            onError(new Error(event.message || 'Review failed'));
+            return;
           }
         }
       }
@@ -114,7 +106,7 @@ export function streamReview(
 }
 
 export async function continueReview(req: ReviewContinueRequest): Promise<string> {
-  const res = await fetch(`${BASE_URL}/review/continue`, {
+  const res = await fetch(apiUrl('/review/continue'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
@@ -132,6 +124,6 @@ export async function getReviewSession(id: number): Promise<ReviewSessionRespons
 }
 
 export async function deleteReviewSession(id: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/review/sessions/${id}`, { method: 'DELETE' });
+  const res = await fetch(apiUrl(`/review/sessions/${id}`), { method: 'DELETE' });
   if (!res.ok) throw new Error(`Delete session failed: ${res.status}`);
 }

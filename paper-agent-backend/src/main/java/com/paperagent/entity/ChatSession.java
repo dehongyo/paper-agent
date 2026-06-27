@@ -27,6 +27,12 @@ public class ChatSession {
     @Column(name = "paper_id")
     private Long paperId;
 
+    @Column(name = "rolling_summary", columnDefinition = "TEXT")
+    private String rollingSummary;
+
+    @Column(name = "state_json", columnDefinition = "TEXT")
+    private String stateJson;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

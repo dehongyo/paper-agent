@@ -1,7 +1,9 @@
 package com.paperagent.service;
 
 import com.paperagent.dto.ChatHistoryMessage;
+import com.paperagent.dto.ConversationContext;
 import com.paperagent.dto.EvidenceChunk;
+import com.paperagent.dto.SearchFilters;
 import com.paperagent.dto.TraceableChatResponse;
 import com.paperagent.dto.TraceableChatStreamEvent;
 import com.paperagent.entity.Paper;
@@ -49,8 +51,12 @@ public class ChatService {
     }
 
     public Flux<String> chatStream(String userMessage, List<ChatHistoryMessage> history) {
+        return chatStream(userMessage, new ConversationContext(null, null, history));
+    }
+
+    public Flux<String> chatStream(String userMessage, ConversationContext context) {
         return chatClient.prompt()
-                .user(buildConversationPrompt(userMessage, history))
+                .user(buildConversationPrompt(userMessage, context))
                 .stream()
                 .content();
     }
@@ -60,19 +66,36 @@ public class ChatService {
     }
 
     public Flux<String> chatWithPaperStream(Long paperId, String userMessage, List<ChatHistoryMessage> history) {
+        return chatWithPaperStream(paperId, userMessage, new ConversationContext(null, null, history));
+    }
+
+    public Flux<String> chatWithPaperStream(Long paperId, String userMessage, ConversationContext context) {
         List<String> contextChunks = embeddingService.similaritySearch(paperId, userMessage, 5);
         String systemPrompt = buildRagSystemPrompt(contextChunks);
 
         return chatClient.prompt()
                 .system(systemPrompt)
-                .user(buildConversationPrompt(userMessage, history))
+                .user(buildConversationPrompt(userMessage, context))
                 .stream()
                 .content();
     }
 
     public TraceableChatResponse chatWithEvidence(String userMessage, Long paperId, String scope) {
         Long searchPaperId = "library".equals(scope) ? null : paperId;
-        List<EvidenceChunk> evidence = evidenceSearchService.search(userMessage, searchPaperId, 6);
+        return chatWithEvidence(userMessage, SearchFilters.of(searchPaperId), scope);
+    }
+
+    public TraceableChatResponse chatWithEvidence(String userMessage, SearchFilters filters, String scope) {
+        return chatWithEvidence(userMessage, filters, scope, ConversationContext.empty());
+    }
+
+    public TraceableChatResponse chatWithEvidence(
+            String userMessage,
+            SearchFilters filters,
+            String scope,
+            ConversationContext context
+    ) {
+        List<EvidenceChunk> evidence = evidenceSearchService.searchWithParentContext(userMessage, filters, 6);
         if (evidence.isEmpty()) {
             return new TraceableChatResponse(
                     "本地文献库中没有足够信息回答这个问题。请上传更多相关论文，或换一个更具体的问题。",
@@ -80,12 +103,12 @@ public class ChatService {
             );
         }
 
-        String prompt = buildTraceablePrompt(userMessage, evidence, null, List.of());
+        String prompt = buildTraceablePrompt(userMessage, evidence, null, context);
         String answer = chatClient.prompt()
                 .user(prompt)
                 .call()
                 .content();
-        return new TraceableChatResponse(answer, evidence);
+        return new TraceableChatResponse(verifyAnswerAgainstEvidence(userMessage, answer, evidence), evidence);
     }
 
     public Flux<TraceableChatStreamEvent> chatWithEvidenceStream(String userMessage, Long paperId, String scope) {
@@ -98,9 +121,27 @@ public class ChatService {
             String scope,
             List<ChatHistoryMessage> history
     ) {
+        Long searchPaperId = "library".equals(scope) ? null : paperId;
+        return chatWithEvidenceStream(userMessage, SearchFilters.of(searchPaperId), scope, history);
+    }
+
+    public Flux<TraceableChatStreamEvent> chatWithEvidenceStream(
+            String userMessage,
+            SearchFilters filters,
+            String scope,
+            List<ChatHistoryMessage> history
+    ) {
+        return chatWithEvidenceStream(userMessage, filters, scope, new ConversationContext(null, null, history));
+    }
+
+    public Flux<TraceableChatStreamEvent> chatWithEvidenceStream(
+            String userMessage,
+            SearchFilters filters,
+            String scope,
+            ConversationContext context
+    ) {
         boolean isLibraryScope = "library".equals(scope);
-        Long searchPaperId = isLibraryScope ? null : paperId;
-        List<EvidenceChunk> evidence = evidenceSearchService.search(userMessage, searchPaperId, 8);
+        List<EvidenceChunk> evidence = evidenceSearchService.searchWithParentContext(userMessage, filters, 8);
 
         // Build library overview for library-scoped conversations
         String libraryOverview = isLibraryScope ? buildLibraryOverview() : null;
@@ -113,7 +154,7 @@ public class ChatService {
             );
         }
 
-        String prompt = buildTraceablePrompt(userMessage, evidence, libraryOverview, history);
+        String prompt = buildTraceablePrompt(userMessage, evidence, libraryOverview, context);
         return chatClient.prompt()
                 .user(prompt)
                 .stream()
@@ -219,19 +260,16 @@ public class ChatService {
     }
 
     private String buildTraceablePrompt(String userMessage, List<EvidenceChunk> evidence, String libraryOverview, List<ChatHistoryMessage> history) {
-        StringBuilder context = new StringBuilder();
-        for (int i = 0; i < evidence.size(); i++) {
-            EvidenceChunk chunk = evidence.get(i);
-            context.append("[")
-                    .append(i + 1)
-                    .append("] ")
-                    .append(chunk.paperTitle())
-                    .append(" chunk#")
-                    .append(chunk.chunkIndex())
-                    .append("\n")
-                    .append(chunk.content())
-                    .append("\n\n");
-        }
+        return buildTraceablePrompt(userMessage, evidence, libraryOverview, new ConversationContext(null, null, history));
+    }
+
+    private String buildTraceablePrompt(
+            String userMessage,
+            List<EvidenceChunk> evidence,
+            String libraryOverview,
+            ConversationContext conversationContext
+    ) {
+        String context = formatEvidenceContext(evidence);
 
         boolean hasLibrary = libraryOverview != null && !libraryOverview.isBlank();
         boolean hasEvidence = !evidence.isEmpty();
@@ -258,6 +296,8 @@ public class ChatService {
 
         // Instructions
         prompt.append("## 指引\n");
+        prompt.append("- 每个关于论文内容的事实性结论都必须由上方证据直接支持，并标注至少一个来源编号，例如 [1]\n");
+        prompt.append("- 删除没有证据支持的数字、方法、对比、作者、年份、数据集和结论，不要猜测\n");
         prompt.append("- 文献库概况类问题（总数、主题、分布）：使用「文献库」部分回答\n");
         if (hasEvidence) {
             prompt.append("- 论文内容类问题（方法、结论、细节）：使用「内容片段」部分回答，标注 [1][2] 来源\n");
@@ -269,13 +309,77 @@ public class ChatService {
 
         // History
         prompt.append("历史对话：\n");
-        prompt.append(formatHistory(history));
+        appendConversationContext(prompt, conversationContext);
         prompt.append("\n\n");
 
         // User question
         prompt.append("用户问题：\n");
         prompt.append(userMessage);
 
+        return prompt.toString();
+    }
+
+    private String verifyAnswerAgainstEvidence(String userMessage, String draftAnswer, List<EvidenceChunk> evidence) {
+        if (draftAnswer == null || draftAnswer.isBlank() || evidence == null || evidence.isEmpty()) {
+            return draftAnswer;
+        }
+        try {
+            String prompt = """
+                    You are a citation-grounded RAG verifier.
+
+                    User question:
+                    %s
+
+                    Evidence:
+                    %s
+
+                    Draft answer:
+                    %s
+
+                    Verify the draft answer against the evidence.
+                    Rules:
+                    - Keep only claims that are directly supported by the evidence.
+                    - Every factual claim about paper content must retain a citation like [1] or [2].
+                    - Remove unsupported numbers, methods, comparisons, authors, years, datasets, and conclusions.
+                    - If the evidence is insufficient, say so briefly.
+                    - Return ONLY the revised final answer in Chinese.
+                    """.formatted(userMessage, formatEvidenceContext(evidence), draftAnswer);
+            String verified = chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+            return verified == null || verified.isBlank() ? draftAnswer : verified;
+        } catch (Exception e) {
+            log.warn("Claim verification failed: {}", e.getMessage());
+            return draftAnswer;
+        }
+    }
+
+    private String formatEvidenceContext(List<EvidenceChunk> evidence) {
+        StringBuilder context = new StringBuilder();
+        for (int i = 0; i < evidence.size(); i++) {
+            EvidenceChunk chunk = evidence.get(i);
+            context.append("[")
+                    .append(i + 1)
+                    .append("] ")
+                    .append(chunk.paperTitle())
+                    .append(" chunk#")
+                    .append(chunk.chunkIndex())
+                    .append("\n")
+                    .append(chunk.content())
+                    .append("\n\n");
+        }
+        return context.toString();
+    }
+
+    private String buildConversationPrompt(String userMessage, ConversationContext context) {
+        ConversationContext safeContext = context == null ? ConversationContext.empty() : context;
+        if (!safeContext.hasMemory() && safeContext.safeRecentMessages().isEmpty()) return userMessage;
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Please use the following conversation memory for continuity, but prioritize the current user question.\n\n");
+        appendConversationContext(prompt, safeContext);
+        prompt.append("\n\nCurrent question:\n");
+        prompt.append(userMessage);
         return prompt.toString();
     }
 
@@ -290,6 +394,21 @@ public class ChatService {
             当前问题：
             %s
             """.formatted(formatHistory(history), userMessage);
+    }
+
+    private void appendConversationContext(StringBuilder prompt, ConversationContext context) {
+        ConversationContext safeContext = context == null ? ConversationContext.empty() : context;
+        prompt.append("## Conversation Memory\n");
+        if (safeContext.rollingSummary() != null && !safeContext.rollingSummary().isBlank()) {
+            prompt.append("Rolling summary:\n");
+            prompt.append(safeContext.rollingSummary().trim()).append("\n\n");
+        }
+        if (safeContext.stateJson() != null && !safeContext.stateJson().isBlank()) {
+            prompt.append("Structured session state JSON:\n");
+            prompt.append(safeContext.stateJson().trim()).append("\n\n");
+        }
+        prompt.append("Recent conversation window:\n");
+        prompt.append(formatHistory(safeContext.safeRecentMessages()));
     }
 
     private String formatHistory(List<ChatHistoryMessage> history) {

@@ -22,7 +22,7 @@ public class SearchController {
         return new SemanticSearchResponse(
                 request.query(),
                 request.paperId(),
-                evidenceSearchService.search(request.query(), request.paperId(), request.safeLimit())
+                evidenceSearchService.search(request.query(), request.filters(), request.safeLimit())
         );
     }
 }

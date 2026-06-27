@@ -225,9 +225,13 @@ export interface ReviewSessionResponse {
 }
 
 export interface ReviewStartEvent {
-  type: 'text' | 'done' | 'error';
-  content: string;
+  type: 'status' | 'text' | 'done' | 'error';
+  content: string | null;
   message: string | null;
+  phase: string | null;
+  sectionTitle: string | null;
+  current: number | null;
+  total: number | null;
 }
 
 // ── Autonomous Writing ──

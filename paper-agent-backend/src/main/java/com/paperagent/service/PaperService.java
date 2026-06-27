@@ -5,7 +5,6 @@ import com.paperagent.entity.Paper;
 import com.paperagent.entity.Paper.PaperStatus;
 import com.paperagent.repository.PaperRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,7 +15,13 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -28,22 +33,46 @@ public class PaperService {
     private final PdfParserService pdfParserService;
     private final EmbeddingService embeddingService;
     private final ChatService chatService;
-    private final ChatClient chatClient;
 
     private final Path uploadBasePath;
+
+    private static final int MIN_AUTO_TAGS = 3;
+    private static final int MAX_AUTO_TAGS = 4;
+    private static final List<String> ACADEMIC_PHRASES = List.of(
+            "retrieval augmented generation",
+            "graph neural networks",
+            "large language models",
+            "natural language processing",
+            "machine learning",
+            "deep learning",
+            "reinforcement learning",
+            "computer vision",
+            "information retrieval",
+            "knowledge graph",
+            "question answering",
+            "semantic search",
+            "transformer",
+            "attention mechanism",
+            "citation analysis"
+    );
+    private static final Set<String> STOP_WORDS = Set.of(
+            "a", "an", "and", "are", "as", "at", "be", "been", "being", "by", "can", "for", "from",
+            "has", "have", "in", "into", "is", "it", "its", "may", "of", "on", "or", "our", "that",
+            "the", "their", "this", "to", "using", "via", "was", "we", "were", "with", "within",
+            "paper", "study", "studies", "method", "methods", "model", "models", "result", "results",
+            "approach", "proposed", "based", "show", "shows", "used"
+    );
 
     public PaperService(
             PaperRepository paperRepository,
             PdfParserService pdfParserService,
             EmbeddingService embeddingService,
-            ChatService chatService,
-            ChatClient chatClient
+            ChatService chatService
     ) {
         this.paperRepository = paperRepository;
         this.pdfParserService = pdfParserService;
         this.embeddingService = embeddingService;
         this.chatService = chatService;
-        this.chatClient = chatClient;
 
         // Resolve upload directory to absolute path based on user.dir
         String userDir = System.getProperty("user.dir");
@@ -118,26 +147,83 @@ public class PaperService {
         // Summarize
         String summary = chatService.generateSummary(fullText);
         paper.setSummary(summary);
-        autoTag(paper);
+        autoTag(paper, fullText);
         paper.setStatus(PaperStatus.READY);
         paperRepository.save(paper);
 
         log.info("Paper {} processing complete", paperId);
     }
 
-    private void autoTag(Paper paper) {
+    private void autoTag(Paper paper, String fullText) {
         if (paper.getTags() != null && !paper.getTags().isBlank()) return;
-        try {
-            String summary = paper.getSummary();
-            if (summary == null || summary.isBlank()) return;
-            String prompt = "You are an academic paper classifier. Based on the following paper summary, generate 3-5 concise English tags separated by commas. Output ONLY the tags, nothing else.\nSummary: " + summary;
-            String tags = chatClient.prompt().user(prompt).call().content();
-            if (tags != null && !tags.isBlank()) {
-                paper.setTags(tags.trim());
-            }
-        } catch (Exception e) {
-            log.warn("Auto-tagging failed for paper {}: {}", paper.getId(), e.getMessage());
+        List<String> tags = generateKeywordTags(paper.getTitle(), paper.getSummary(), fullText);
+        if (!tags.isEmpty()) {
+            paper.setTags(serializeTags(tags));
         }
+    }
+
+    static List<String> generateKeywordTags(String title, String summary, String fullText) {
+        String weightedTitle = blankToNull(title) == null ? "" : (title + " " + title + " ");
+        String weightedSummary = blankToNull(summary) == null ? "" : (summary + " ");
+        String body = blankToNull(fullText) == null ? "" : fullText;
+        String text = (weightedTitle + weightedSummary + body).toLowerCase(Locale.ROOT);
+
+        Map<String, Integer> scores = new LinkedHashMap<>();
+        for (String phrase : ACADEMIC_PHRASES) {
+            int occurrences = countOccurrences(text, phrase);
+            if (occurrences > 0) {
+                scores.put(phrase, occurrences * 20 + (weightedTitle.toLowerCase(Locale.ROOT).contains(phrase) ? 25 : 0));
+            }
+        }
+
+        String[] terms = text.split("[^\\p{IsAlphabetic}\\p{IsDigit}]+");
+        for (String term : terms) {
+            if (!isUsefulKeyword(term)) {
+                continue;
+            }
+            scores.merge(term, 1 + (weightedTitle.toLowerCase(Locale.ROOT).contains(term) ? 4 : 0), Integer::sum);
+        }
+
+        List<String> tags = new ArrayList<>();
+        scores.entrySet().stream()
+                .sorted(Comparator.<Map.Entry<String, Integer>>comparingInt(Map.Entry::getValue)
+                        .reversed()
+                        .thenComparing(Map.Entry::getKey))
+                .map(Map.Entry::getKey)
+                .filter(candidate -> tags.stream().noneMatch(existing -> overlaps(existing, candidate)))
+                .limit(MAX_AUTO_TAGS)
+                .forEach(tags::add);
+
+        for (String fallback : List.of("research", "analysis", "literature")) {
+            if (tags.size() >= MIN_AUTO_TAGS) {
+                break;
+            }
+            if (!tags.contains(fallback)) {
+                tags.add(fallback);
+            }
+        }
+
+        return tags;
+    }
+
+    private static boolean isUsefulKeyword(String term) {
+        return term.length() >= 3
+                && !STOP_WORDS.contains(term)
+                && !term.chars().allMatch(Character::isDigit);
+    }
+
+    private static int countOccurrences(String text, String phrase) {
+        int count = 0;
+        int index = text.indexOf(phrase);
+        while (index >= 0) {
+            count++;
+            index = text.indexOf(phrase, index + phrase.length());
+        }
+        return count;
+    }
+
+    private static boolean overlaps(String existing, String candidate) {
+        return existing.contains(candidate) || candidate.contains(existing);
     }
 
     /**

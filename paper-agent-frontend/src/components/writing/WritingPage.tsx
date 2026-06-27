@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { exportWriting, generateDraft, generateOutline, saveWritingVersion } from '../../api/client';
 import type { CitationStyle, ReferenceItem, WritingLength, WritingRequest, WritingResponse, WritingType } from '../../types';
 import { Clock, Save, Loader2, Check, ChevronRight, Zap } from 'lucide-react';
