@@ -16,7 +16,7 @@ All Maven commands require Java 21:
 
 ```powershell
 $env:JAVA_HOME="C:\jdks\openlogic-openjdk-21.0.11+10-windows-x64\openlogic-openjdk-21.0.11+10-windows-x64"
-$env:DASHSCOPE_API_KEY="sk-293a0438da2e450e94c483a334f6fbd3"
+$env:DASHSCOPE_API_KEY="YOUR_DASHSCOPE_API_KEY"
 ```
 
 ---
@@ -1630,7 +1630,7 @@ git commit -m "chore: finalize review agent frontend integration"
 
 ```powershell
 $env:JAVA_HOME="C:\jdks\openlogic-openjdk-21.0.11+10-windows-x64\openlogic-openjdk-21.0.11+10-windows-x64"
-$env:DASHSCOPE_API_KEY="sk-293a0438da2e450e94c483a334f6fbd3"
+$env:DASHSCOPE_API_KEY="YOUR_DASHSCOPE_API_KEY"
 cd paper-agent-backend
 .\mvnw.cmd spring-boot:run
 ```
