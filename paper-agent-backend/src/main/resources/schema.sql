@@ -71,3 +71,21 @@ CREATE TABLE IF NOT EXISTS writing_versions (
     version_number  INTEGER NOT NULL DEFAULT 1,
     created_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS review_template (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL DEFAULT 'custom',
+    source_filename VARCHAR(255),
+    content_text TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS review_session (
+    id BIGSERIAL PRIMARY KEY,
+    paper_id BIGINT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+    template_id BIGINT NOT NULL REFERENCES review_template(id) ON DELETE RESTRICT,
+    result_text TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'in_progress',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
