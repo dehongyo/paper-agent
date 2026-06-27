@@ -92,3 +92,18 @@ CREATE TABLE IF NOT EXISTS review_session (
 
 CREATE INDEX IF NOT EXISTS idx_review_session_paper_id ON review_session (paper_id);
 CREATE INDEX IF NOT EXISTS idx_review_session_template_id ON review_session (template_id);
+
+-- Autonomous writing sessions table
+CREATE TABLE IF NOT EXISTS autonomous_writing_session (
+    id BIGSERIAL PRIMARY KEY,
+    topic VARCHAR(500) NOT NULL,
+    current_phase VARCHAR(30) NOT NULL DEFAULT 'topic_analysis',
+    topic_analysis_json TEXT,
+    search_results_json TEXT,
+    imported_paper_ids TEXT,
+    outline TEXT,
+    draft TEXT,
+    final_draft TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'in_progress',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
