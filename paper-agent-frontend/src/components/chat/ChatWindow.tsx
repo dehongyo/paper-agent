@@ -8,6 +8,7 @@ import type { ChatSession } from '../../types';
 import {
   ArrowRight,
   BookOpen,
+  Brain,
   History,
   Library,
   Loader2,
@@ -17,6 +18,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
+import { MemoryPanel } from './MemoryPanel';
 
 const quickPrompts = [
   { icon: BookOpen, label: 'Summarize', prompt: 'Please summarize the core ideas and main contributions of this paper.' },
@@ -41,6 +43,7 @@ export function ChatWindow() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [showSearchPanel, setShowSearchPanel] = useState(false);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+  const [showMemoryPanel, setShowMemoryPanel] = useState(false);
   const [historySessions, setHistorySessions] = useState<ChatSession[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -81,11 +84,19 @@ export function ChatWindow() {
   const toggleHistoryPanel = () => {
     setShowHistoryPanel((prev) => !prev);
     setShowSearchPanel(false);
+    setShowMemoryPanel(false);
   };
 
   const toggleSearchPanel = () => {
     setShowSearchPanel((prev) => !prev);
     setShowHistoryPanel(false);
+    setShowMemoryPanel(false);
+  };
+
+  const toggleMemoryPanel = () => {
+    setShowMemoryPanel((prev) => !prev);
+    setShowHistoryPanel(false);
+    setShowSearchPanel(false);
   };
 
   const openHistorySession = async (session: ChatSession) => {
@@ -151,6 +162,18 @@ export function ChatWindow() {
           >
             <History size={17} />
           </button>
+
+          {activeSessionId && (
+            <button
+              type="button"
+              onClick={toggleMemoryPanel}
+              className={`icon-button ml-1 ${showMemoryPanel ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)]' : ''}`}
+              aria-label={showMemoryPanel ? 'Close session memory' : 'Open session memory'}
+              title="Session memory"
+            >
+              <Brain size={17} />
+            </button>
+          )}
 
           <button
             type="button"
@@ -291,6 +314,10 @@ export function ChatWindow() {
           <div className="w-80 shrink-0 border-l border-[var(--color-border)]">
             <SearchPanel onSelectPaper={setSelectedPaper} />
           </div>
+        )}
+
+        {showMemoryPanel && activeSessionId && (
+          <MemoryPanel sessionId={activeSessionId} onClose={() => setShowMemoryPanel(false)} />
         )}
       </div>
     </div>

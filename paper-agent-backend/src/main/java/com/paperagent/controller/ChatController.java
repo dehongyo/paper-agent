@@ -6,6 +6,7 @@ import com.paperagent.dto.ChatMessageResponse;
 import com.paperagent.dto.ChatRequest;
 import com.paperagent.dto.ChatSessionCreateRequest;
 import com.paperagent.dto.ChatSessionResponse;
+import com.paperagent.dto.SessionMemoryResponse;
 import com.paperagent.dto.TraceableChatRequest;
 import com.paperagent.dto.TraceableChatResponse;
 import com.paperagent.dto.TraceableChatStreamEvent;
@@ -36,6 +37,8 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequiredArgsConstructor
 public class ChatController {
 
+    private static final int MEMORY_RECALL_LIMIT = 8;
+
     private final ChatService chatService;
     private final ChatSessionService chatSessionService;
     private final ConversationMemoryService conversationMemoryService;
@@ -62,6 +65,40 @@ public class ChatController {
     @DeleteMapping("/sessions/{sessionId}")
     public void deleteSession(@PathVariable Long sessionId) {
         chatSessionService.deleteSession(sessionId);
+        conversationMemoryService.deleteBySessionId(sessionId);
+    }
+
+    @DeleteMapping("/sessions/{sessionId}/memory/{memoryId}")
+    public java.util.Map<String, String> deleteMemory(
+            @PathVariable Long sessionId,
+            @PathVariable Long memoryId
+    ) {
+        conversationMemoryService.deleteMemory(memoryId);
+        return java.util.Map.of("status", "deleted");
+    }
+
+    @GetMapping("/sessions/{sessionId}/memory")
+    public SessionMemoryResponse getSessionMemory(@PathVariable Long sessionId) {
+        var context = buildConversationContext(sessionId, null);
+        var memories = conversationMemoryService.getMemories(sessionId);
+        var entries = memories.stream()
+                .map(m -> new SessionMemoryResponse.MemoryEntry(
+                        m.getId(),
+                        m.getScope(),
+                        m.getMemoryType(),
+                        m.getContent(),
+                        m.getImportance(),
+                        m.getConfidence(),
+                        m.getUpdatedAt() != null ? m.getUpdatedAt().toString() : null
+                ))
+                .toList();
+        return new SessionMemoryResponse(
+                sessionId,
+                context.rollingSummary(),
+                context.stateJson(),
+                entries,
+                context.safeRecentMessages().size()
+        );
     }
 
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -69,15 +106,13 @@ public class ChatController {
         log.info("Stream chat: paperId={}, sessionId={}, message={}",
                 request.paperId(), request.sessionId(), request.message());
 
-        var history = request.sessionId() == null
-                ? com.paperagent.dto.ConversationContext.empty()
-                : chatSessionService.getConversationContext(request.sessionId());
+        var context = buildConversationContext(request.sessionId(), request.message());
         saveUserMessage(request.sessionId(), request.message());
 
         StringBuilder assistant = new StringBuilder();
         Flux<String> stream = request.paperId() != null
-                ? chatService.chatWithPaperStream(request.paperId(), request.message(), history)
-                : chatService.chatStream(request.message(), history);
+                ? chatService.chatWithPaperStream(request.paperId(), request.message(), context)
+                : chatService.chatStream(request.message(), context);
 
         return stream
                 .doOnNext(assistant::append)
@@ -103,9 +138,7 @@ public class ChatController {
 
     @PostMapping("/rag")
     public TraceableChatResponse chatRag(@Valid @RequestBody TraceableChatRequest request) {
-        var context = request.sessionId() == null
-                ? com.paperagent.dto.ConversationContext.empty()
-                : chatSessionService.getConversationContext(request.sessionId());
+        var context = buildConversationContext(request.sessionId(), request.message());
         return chatService.chatWithEvidence(request.message(), request.filters(), request.safeScope(), context);
     }
 
@@ -114,14 +147,12 @@ public class ChatController {
         log.info("Stream RAG chat: paperId={}, scope={}, sessionId={}, message={}",
                 request.paperId(), request.safeScope(), request.sessionId(), request.message());
 
-        var history = request.sessionId() == null
-                ? com.paperagent.dto.ConversationContext.empty()
-                : chatSessionService.getConversationContext(request.sessionId());
+        var context = buildConversationContext(request.sessionId(), request.message());
         saveUserMessage(request.sessionId(), request.message());
 
         StringBuilder assistant = new StringBuilder();
         AtomicReference<String> evidenceJson = new AtomicReference<>();
-        return chatService.chatWithEvidenceStream(request.message(), request.filters(), request.safeScope(), history)
+        return chatService.chatWithEvidenceStream(request.message(), request.filters(), request.safeScope(), context)
                 .doOnNext(event -> {
                     if ("answer".equals(event.type())) assistant.append(event.content());
                     if ("evidence".equals(event.type())) evidenceJson.set(toJson(event.evidence()));
@@ -130,6 +161,23 @@ public class ChatController {
                     saveAssistantMessage(request.sessionId(), assistant.toString(), evidenceJson.get());
                     updateConversationMemory(request.sessionId(), request.message(), assistant.toString());
                 });
+    }
+
+    private com.paperagent.dto.ConversationContext buildConversationContext(Long sessionId, String currentQuery) {
+        if (sessionId == null) {
+            return com.paperagent.dto.ConversationContext.empty();
+        }
+        var base = chatSessionService.getConversationContext(sessionId);
+        List<String> longTermMemories = conversationMemoryService.recallMemories(sessionId, currentQuery, MEMORY_RECALL_LIMIT);
+        if (longTermMemories.isEmpty()) {
+            return base;
+        }
+        return com.paperagent.dto.ConversationContext.withMemories(
+                base.rollingSummary(),
+                base.stateJson(),
+                base.safeRecentMessages(),
+                longTermMemories
+        );
     }
 
     private void saveUserMessage(Long sessionId, String content) {

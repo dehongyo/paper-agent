@@ -94,6 +94,18 @@ CREATE TABLE IF NOT EXISTS conversation_memories (
 ALTER TABLE conversation_memories
     ADD COLUMN IF NOT EXISTS source VARCHAR(50);
 
+ALTER TABLE conversation_memories
+    ADD COLUMN IF NOT EXISTS reason VARCHAR(500);
+
+ALTER TABLE conversation_memories
+    ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP;
+
+ALTER TABLE conversation_memories
+    ADD COLUMN IF NOT EXISTS embedding vector(1024);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_memories_embedding
+    ON conversation_memories USING hnsw (embedding vector_cosine_ops);
+
 CREATE INDEX IF NOT EXISTS idx_conversation_memories_session_updated
     ON conversation_memories (session_id, updated_at DESC);
 

@@ -267,3 +267,23 @@ export interface SearchPaperResult {
   pdfUrl: string | null;
   doi: string | null;
 }
+
+// ── Session Memory ──
+
+export interface MemoryEntry {
+  id: number;
+  scope: string;
+  memoryType: string;
+  content: string;
+  importance: number;
+  confidence: number;
+  updatedAt: string;
+}
+
+export interface SessionMemoryResponse {
+  sessionId: number;
+  rollingSummary: string;
+  stateJson: string;
+  longTermMemories: MemoryEntry[];
+  recentMessageCount: number;
+}

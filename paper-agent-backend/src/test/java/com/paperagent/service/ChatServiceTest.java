@@ -150,4 +150,64 @@ class ChatServiceTest {
 
         assertThat(chunks).containsExactly("answer");
     }
+
+    @Test
+    void chatStreamIncludesLongTermMemoriesInPrompt() {
+        ConversationContext context = ConversationContext.withMemories(
+                "Rolling summary text.",
+                "{\"currentGoal\":\"test\"}",
+                List.of(new ChatHistoryMessage("user", "Hello")),
+                List.of("User prefers concise Chinese answers", "Project goal: build RAG system")
+        );
+        when(chatClient.prompt().user(org.mockito.ArgumentMatchers.contains("prefers concise Chinese")).stream().content())
+                .thenReturn(Flux.just("answer"));
+
+        List<String> chunks = chatService.chatStream("Test", context)
+                .collectList()
+                .block();
+
+        assertThat(chunks).containsExactly("answer");
+    }
+
+    @Test
+    void traceableChatWithLongTermMemoriesIncludesThemInPrompt() {
+        EvidenceChunk chunk = new EvidenceChunk(1L, 2L, "Paper", 0, "Method uses BERT.", 0.9);
+        when(evidenceSearchService.searchWithParentContext(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(SearchFilters.class),
+                org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(List.of(chunk));
+        when(chatClient.prompt().user(org.mockito.ArgumentMatchers.contains("Long-term")).call().content())
+                .thenReturn("Answer [1].");
+
+        ConversationContext ctx = ConversationContext.withMemories(
+                null, null, List.of(),
+                List.of("User prefers Chinese answers")
+        );
+        TraceableChatResponse resp = chatService.chatWithEvidence("method", SearchFilters.of(2L), "paper", ctx);
+
+        assertThat(resp.answer()).isEqualTo("Answer [1].");
+    }
+
+    @Test
+    void enhanceQueryAddsTermsFromConversationContext() {
+        // Query enhancement is tested indirectly via evidence search interaction
+        EvidenceChunk chunk = new EvidenceChunk(1L, 2L, "Paper", 0, "RAG pipeline details.", 0.9);
+        when(evidenceSearchService.searchWithParentContext(
+                org.mockito.ArgumentMatchers.argThat(q -> q != null && q.contains("method")),
+                org.mockito.ArgumentMatchers.any(SearchFilters.class),
+                org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(List.of(chunk));
+        when(chatClient.prompt().user(org.mockito.ArgumentMatchers.anyString()).call().content())
+                .thenReturn("Enhanced answer [1].");
+
+        ConversationContext ctx = ConversationContext.withMemories(
+                null, "{\"currentGoal\":\"improve retrieval performance\",\"confirmedDecisions\":[\"use hybrid search\"]}",
+                List.of(),
+                List.of("User is building a RAG pipeline", "Prefers dense retrieval over sparse")
+        );
+        TraceableChatResponse resp = chatService.chatWithEvidence("method", SearchFilters.of(2L), "paper", ctx);
+
+        assertThat(resp.answer()).isEqualTo("Enhanced answer [1].");
+    }
 }

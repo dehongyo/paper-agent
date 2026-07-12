@@ -48,6 +48,15 @@ public class ConversationMemory {
     @Column(name = "source", length = 50)
     private String source;
 
+    @Column(name = "reason", length = 500)
+    private String reason;
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
+    @Column(name = "embedding", columnDefinition = "vector(1024)")
+    private String embedding;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

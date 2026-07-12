@@ -11,6 +11,7 @@ import type {
   ReferenceItem,
   SemanticSearchRequest,
   SemanticSearchResponse,
+  SessionMemoryResponse,
   TraceableChatRequest,
   TraceableChatResponse,
   TraceableChatStreamEvent,
@@ -139,6 +140,14 @@ export async function getChatMessages(sessionId: number): Promise<ChatMessageRes
 export async function deleteChatSession(sessionId: number): Promise<void> {
   const res = await fetch(apiUrl(`/chat/sessions/${sessionId}`), { method: 'DELETE' });
   if (!res.ok) throw new Error(`Delete session failed: ${res.status}`);
+}
+
+export async function getSessionMemory(sessionId: number): Promise<SessionMemoryResponse> {
+  return request<SessionMemoryResponse>(`/chat/sessions/${sessionId}/memory`);
+}
+
+export async function deleteMemory(sessionId: number, memoryId: number): Promise<void> {
+  await fetch(apiUrl(`/chat/sessions/${sessionId}/memory/${memoryId}`), { method: 'DELETE' });
 }
 
 export async function discoverPapers(params: {

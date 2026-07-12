@@ -22,7 +22,10 @@
 | **处理管线** | 上传 → 解析 → 分块 → 向量化 → 摘要生成 → 自动标签，每阶段状态可见 |
 | **进阶 RAG** | 混合检索（向量 + 关键词）、多因子重排序、父块上下文扩展、元数据过滤、答案溯源与校验 |
 | **会话系统** | 对话按论文或文献库分组，支持创建、保存、恢复，消息持久化 |
-| **会话记忆与上下文压缩** | 三层分级上下文（滚动摘要 + 结构化状态 + 近期窗口），自动提取持久记忆 |
+| **会话记忆闭环** | 写入 → 去重/更新 → 召回 → 注入上下文 → 影响回答 → 调试面板，完整闭环 |
+| **记忆语义向量化** | 长期记忆自动生成 embedding，支持向量语义召回跨 session 相似记忆 |
+| **上下文压缩与 Token 预算** | 三层分级压缩 + 检索前 query 增强 + 检索后 evidence 压缩 + 显式 token 预算分配 |
+| **记忆安全门控** | 8 种记忆类型 + 敏感信息过滤（API key/邮箱/手机号）+ 低价值过滤 + reason 字段 |
 | **外部检索** | 对接 arXiv、Semantic Scholar、PubMed、DBLP，支持 URL/DOI 导入 |
 | **论文评审** | 按模板逐节深度审读，带原文引用，支持追问 |
 | **自主综述写作** | 6 阶段编排：选题分析 → 文献检索 → 导入 → 大纲 → 草稿 → 自审终稿，每阶段需人工确认 |
@@ -113,7 +116,7 @@ paper-agent-frontend/                React 前端
 │   │   ├── autonomous-writing.ts  自主写作 API（SSE 事件流）
 │   │   └── base.ts                API 基础 URL 工具
 │   ├── components/
-│   │   ├── chat/                  对话组件（ChatWindow、ChatInput、ChatMessage、EvidenceList、SearchPanel）
+│   │   ├── chat/                  对话组件（ChatWindow、ChatInput、ChatMessage、EvidenceList、SearchPanel、MemoryPanel）
 │   │   ├── library/               文献库组件（LibraryPage、PaperCard、PaperEditPanel、PaperUpload、PaperViewer、PaperImport）
 │   │   ├── writing/               写作组件（WritingPage、WritingEditor、WritingConfigPanel、ReferenceList、ExportPanel、VersionManager、PaperPicker、WritingEvidencePanel）
 │   │   ├── review/                评审组件（ReviewPage）
@@ -347,25 +350,274 @@ Phase 2 使用了 **Spring AI Tool Calling** 机制：将 `searchPapers` 和 `fi
 ### 8. 数据存储设计
 
 ```
-┌─────────────┐     ┌──────────────────┐     ┌────────────────────┐
-│   papers    │────→│   paper_chunks    │     │   chat_sessions    │
-│             │     │   + embedding     │     │   + rolling_summary│
-│  标题/作者   │     │   + HNSW 索引     │     │   + state_json     │
-│  DOI/标签    │     │   + FTS 索引      │     │                    │
-└─────────────┘     └──────────────────┘     └────────┬───────────┘
-                                                      │
-                                           ┌──────────┴───────────┐
-                                           │                      │
-                                    ┌──────┴──────┐    ┌─────────┴──────────┐
-                                    │chat_messages│    │conversation_memories│
-                                    │+ evidence   │    │  scope / type       │
-                                    └─────────────┘    │  importance / conf  │
-                                                       └────────────────────┘
+┌─────────────┐     ┌──────────────────┐     ┌──────────────────────────┐
+│   papers    │────→│   paper_chunks    │     │     chat_sessions        │
+│             │     │   + embedding     │     │   + rolling_summary      │
+│  标题/作者   │     │   + HNSW 索引     │     │   + state_json           │
+│  DOI/标签    │     │   + FTS 索引      │     │                          │
+└─────────────┘     └──────────────────┘     └──────────┬───────────────┘
+                                                        │
+                                             ┌──────────┴───────────────┐
+                                             │                          │
+                                      ┌──────┴──────┐    ┌─────────────┴──────────────┐
+                                      │chat_messages│    │  conversation_memories      │
+                                      │+ evidence   │    │  scope / type / importance  │
+                                      └─────────────┘    │  confidence / reason        │
+                                                         │  embedding + HNSW 索引      │
+                                                         └────────────────────────────┘
 ```
 
-- **pgvector HNSW 索引**：`paper_chunks.embedding` 列上的 `vector_cosine_ops` 索引支持高效近似最近邻检索
+- **pgvector HNSW 索引**：`paper_chunks.embedding` 和 `conversation_memories.embedding` 均建立 `vector_cosine_ops` HNSW 索引
 - **全文搜索 GIN 索引**：`paper_chunks.content` 上的 `tsvector` GIN 索引支持 PostgreSQL 全文搜索
 - **外键级联**：`chat_sessions`、`chat_messages`、`paper_chunks`、`conversation_memories` 均设置外键约束和级联删除
+
+### 9. 记忆闭环 —— 完整数据流
+
+系统实现了从"写入记忆"到"影响回答"的完整闭环：
+
+```
+每轮对话
+  │
+  ├─→ [写] ConversationMemoryService.updateAfterTurn()
+  │      LLM 分析对话 → 更新 rollingSummary + stateJson
+  │      → 提取 memoryCandidates → 门控过滤 → 去重 → 写入 conversation_memories
+  │      → 异步生成 embedding（向量化）
+  │
+  ├─→ [读] ChatController.buildConversationContext()
+  │      从 chat_sessions 读取 rollingSummary + stateJson + recentMessages
+  │      从 conversation_memories 召回长期记忆（importance × 0.4 + confidence × 0.3 + recency × 0.3 + queryBoost × 0.15）
+  │      → 组装 ConversationContext
+  │
+  ├─→ [压缩] ChatService 预处理链
+  │      enhanceQuery()：用 stateJson + 长期记忆扩充检索 query
+  │      compressEvidence()：检索结果逐句匹配 query 关键词 → 只保留相关句子
+  │      compressContext()：长期记忆按 query 关键词过滤 → 去掉无关记忆
+  │
+  ├─→ [注入] ChatService.buildTraceablePrompt()
+  │      TokenBudget 分配预算 → 拼接 system prompt + evidence + context + history + question
+  │
+  └─→ [调试] GET /api/chat/sessions/{id}/memory
+         前端 MemoryPanel 展示完整记忆状态 + 单条删除
+```
+
+#### 9.1 记忆召回算法
+
+每条长期记忆的召回分数：
+
+```
+score = importance × 0.4 + confidence × 0.3 + recency × 0.3 + queryBoost × 0.15
+
+recency = e^(-hoursSince / 34.7)   ← 半衰期 ~24 小时
+queryBoost = keywordOverlap(query, content)   ← 查询词项在记忆内容中的匹配率
+```
+
+召回后按分数降序排列，并通过 Jaccard 相似度（阈值 0.55）去重，避免返回语义重复的记忆。
+
+#### 9.2 记忆去重与更新
+
+写入新记忆前，在已有记忆中搜索同 `memoryType` 且 Jaccard 词集相似度 ≥ 55% 的条目：
+- **有匹配** → 更新该条目的内容、取 max(importance)、取 max(confidence)、刷新 reason
+- **无匹配** → 新建条目
+
+这避免了"用户偏好中文回答"被反复保存为多条记录的问题。
+
+---
+
+### 10. Memory Write Gate v2 —— 安全门控
+
+记忆写入前经过三道门控：
+
+#### 10.1 大模型语义门控（Prompt 层）
+
+模型被要求严格按以下标准判断：
+
+| 条件 | 说明 |
+|------|------|
+| **8 种记忆类型** | `user_preference` / `confirmed_decision` / `project_goal` / `paper_fact` / `workflow_rule` / `open_question` / `research_topic` / `methodology_choice` |
+| **importance 评分指南** | 0.9-1.0：用户明确声明的偏好/决策/核心目标；0.7-0.8：可复用的上下文/工作流模式；<0.5：不写 |
+| **confidence 评分指南** | 0.9-1.0：用户明确说出；0.7-0.8：对话中明确暗示；<0.5：不写（太不确定） |
+| **禁止记忆** | 问候/感谢/闲聊、已完成的一次性任务、模型幻觉/猜测、RAG 证据的复述 |
+| **reason 字段** | 每一条记忆必须附带一句解释"为什么值得保留" |
+
+#### 10.2 敏感信息过滤器（代码层）
+
+`ConversationMemoryService.containsSensitiveContent()` 拒绝包含以下内容的记忆：
+
+- API key 模式（`key:` / `key=` / `key is`）
+- JWT token（`eyJ...`）
+- 邮箱地址
+- 手机号（中国 + 国际）
+- 身份证号
+- 明文密码关键词
+
+#### 10.3 低价值过滤器（代码层）
+
+`ConversationMemoryService.isLowValueContent()` 拒绝：
+
+- 纯问候语（`hi` / `hello` / `ok` / `谢谢` / `好的` 等）
+- 去除常见前缀后长度 < 15 字符的短文本
+
+---
+
+### 11. 检索增强链 —— 三级预处理
+
+在 RAG 检索和生成之间，插入三级预处理，形成"检索增强链"：
+
+```
+用户 query
+  │
+  ├─→ C.13 enhanceQuery()
+  │     从 stateJson 的 confirmedDecisions / currentGoal 中提取引号内的关键短语
+  │     从与 query 有重叠的长期记忆中提取独有词项
+  │     → 追加 ≤5 个扩展词到检索 query
+  │     效果：让"这个方法效率如何"变成"这个方法效率如何 retrieval performance hybrid search"
+  │
+  ▼
+EvidenceSearchService（混合检索，已有）
+  │
+  ├─→ C.14 compressEvidence()
+  │     逐句拆分 evidence chunk → 检查是否含 query 关键词
+  │     保留匹配句子，丢弃无关句子
+  │     全部无匹配时 fallback：保留头尾各 2 句 + 省略标记 "..."
+  │     效果：3 个 chunk 从 ~3000 字符压缩到 ~800 字符
+  │
+  ▼
+  ├─→ B.8 compressContext()
+  │     长期记忆按 query 关键词匹配
+  │     有重叠 → 保留；无重叠 → 丢弃
+  │     过滤后为空时保留 top 50% 防信息丢失
+  │     额外保留 2 条非匹配记忆维持多样性
+  │
+  ▼
+LLM 生成
+```
+
+这三个步骤全部基于关键词匹配，**不增加额外 LLM 调用**，延迟为零。
+
+---
+
+### 12. Token Budget 管理
+
+`ChatService.TokenBudget` 实现显式的 context window 预算分配（估算公式：token ≈ chars / 3）：
+
+```
+总预算：~8000 tokens（模型 128k 上下文中保持精简）
+
+┌──────────────────────────┬─────────┬──────────────────────────────┐
+│ 段                      │ 预算    │ 溢出策略                      │
+├──────────────────────────┼─────────┼──────────────────────────────┤
+│ System prompt + 指引     │ 400     │ 固定，不裁剪                  │
+│ 文献库概况 (library)     │ 600     │ head(60%) + tail(40%) 截断   │
+│ Evidence 证据片段        │ 2000    │ head(60%) + tail(40%) 截断   │
+│ Rolling summary + state  │ —       │ 不裁剪（已压缩）             │
+│ 长期记忆                 │ 1000    │ head(60%) + tail(40%) 截断   │
+│ 近期对话                 │ 1500    │ head(60%) + tail(40%) 截断   │
+│ 用户问题                 │ 剩余    │ 完整保留                     │
+└──────────────────────────┴─────────┴──────────────────────────────┘
+```
+
+**截断策略**：当内容超出预算时，保留前 60% + 后 40%，中间替换为 `... [truncated N chars] ...`。这种方式保留了开头（通常是最相关上下文）和结尾（通常是最近事实），牺牲了中间过渡部分。
+
+每次构建 prompt 后输出 debug 日志记录各段实际 token 消耗，便于调优。
+
+---
+
+### 13. Memory Embedding —— 语义向量召回
+
+长期记忆在写入后异步生成 1024 维 embedding 向量，存入 `conversation_memories.embedding` 列（带 HNSW 索引），支持跨 session 的语义级记忆召回。
+
+#### 13.1 架构
+
+```
+记忆写入
+  │
+  └─→ Thread.startVirtualThread()   ← 异步，不阻塞主流程
+        └─→ EmbeddingService.embedMemoryContent(id, content)
+              └─→ embeddingModel.embed(content)
+                    └─→ UPDATE conversation_memories SET embedding = ?::vector
+
+记忆召回（语义）
+  │
+  └─→ ConversationMemoryService.recallByVector(query, scope, limit)
+        └─→ EmbeddingService.searchMemoriesByVector(query, scope, limit)
+              └─→ SELECT id, 1 - (embedding <=> ?::vector) AS similarity
+                    FROM conversation_memories
+                    WHERE embedding IS NOT NULL
+                    ORDER BY embedding <=> ?::vector
+                    LIMIT ?
+```
+
+#### 13.2 向量相似度搜索 SQL
+
+```sql
+SELECT id, 1 - (embedding <=> ?::vector) AS similarity
+FROM conversation_memories
+WHERE embedding IS NOT NULL
+  AND (? IS NULL OR scope = ?)
+ORDER BY embedding <=> ?::vector
+LIMIT ?
+```
+
+- 使用 pgvector 的 `<=>` 余弦距离算子
+- 配合 HNSW 索引，O(log N) 近似最近邻
+- 支持 scope 过滤（session / project / global）
+
+#### 13.3 与关键词召回的协同
+
+系统同时提供两条召回路径：
+
+| 路径 | 方法 | 适用场景 |
+|------|------|----------|
+| 关键词加权召回 | `recallMemories(sessionId, query)` | session 内，当前对话上下文 |
+| 语义向量召回 | `recallByVector(query, scope)` | 跨 session，无关键词重叠但语义相似 |
+
+两条路径可组合使用，例如：先用向量召回跨 session 的相关记忆，再用关键词加权排序。
+
+---
+
+### 14. 前端记忆调试面板
+
+ChatWindow 头部新增 🧠 按钮（仅在有活跃 session 时显示），点击打开 `MemoryPanel`：
+
+```
+┌─ SESSION MEMORY ─────────────────────────── X ─┐
+│  ┌──────┐  ┌──────┐  ┌──────┐                  │
+│  │  5   │  │  12  │  │ Yes  │                  │
+│  │Mems  │  │Msgs  │  │Summ  │                  │
+│  └──────┘  └──────┘  └──────┘                  │
+│                                                  │
+│  ROLLING SUMMARY                                 │
+│  ┌────────────────────────────────────────┐     │
+│  │ User is building a RAG pipeline...     │     │
+│  │ Decided to use hybrid search...         │     │
+│  └────────────────────────────────────────┘     │
+│                                                  │
+│  ▸ SESSION STATE (可折叠)                       │
+│    Goal: improve retrieval performance           │
+│    Decisions: use hybrid search                  │
+│    Preferences: concise Chinese answers          │
+│    Active Papers: 1, 2                           │
+│                                                  │
+│  LONG-TERM MEMORIES (5)                          │
+│  ┌──────────────────────────────────────────┐   │
+│  │ ✨ 偏好       session              🗑️    │   │
+│  │ User prefers concise Chinese answers     │   │
+│  │ I ████████ 85%   C ████████ 90%         │   │
+│  └──────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────┐   │
+│  │ 🎯 目标       project              🗑️    │   │
+│  │ Build a RAG-based academic assistant     │   │
+│  │ I ████████ 95%   C ████████ 95%         │   │
+│  └──────────────────────────────────────────┘   │
+│  ...                                             │
+└──────────────────────────────────────────────────┘
+```
+
+每条记忆卡片包含：
+- **类型图标 + 中文标签**（8 种记忆类型各有对应图标）
+- **scope 标签**（session / project / global / paper）
+- **importance + confidence 进度条**（颜色编码：≥80% 绿 / ≥60% 黄 / 其余灰）
+- **🗑️ 删除按钮**：点击调 `DELETE /sessions/{id}/memory/{memoryId}` 并自动刷新
 
 ---
 
@@ -466,10 +718,12 @@ POST   /api/search/semantic              语义检索（支持 paperId/tag/日�
 GET    /api/chat/sessions                会话列表（按 scope + paperId 过滤）
 POST   /api/chat/sessions                创建会话
 GET    /api/chat/sessions/{id}/messages  会话消息历史
-DELETE /api/chat/sessions/{id}           删除会话
-POST   /api/chat/rag                     RAG 问答（非流式，含证据溯源）
-POST   /api/chat/rag/stream              RAG 问答（SSE 流式，含证据溯源）
-POST   /api/chat/stream                  普通对话（SSE 流式）
+DELETE /api/chat/sessions/{id}           删除会话（含关联消息和长期记忆）
+GET    /api/chat/sessions/{id}/memory    会话记忆调试（含 rollingSummary、stateJson、长期记忆列表）
+DELETE /api/chat/sessions/{id}/memory/{mid}  删除单条长期记忆
+POST   /api/chat/rag                     RAG 问答（非流式，含证据溯源 + 记忆注入）
+POST   /api/chat/rag/stream              RAG 问答（SSE 流式，含证据溯源 + 记忆注入）
+POST   /api/chat/stream                  普通对话（SSE 流式，含记忆上下文）
 POST   /api/chat                         普通对话（非流式）
 ```
 

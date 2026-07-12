@@ -84,6 +84,49 @@ public class EmbeddingService {
     }
 
     /**
+     * Embed a single memory content and update the conversation_memories row.
+     * Returns the vector string on success, null on failure.
+     */
+    public String embedMemoryContent(Long memoryId, String content) {
+        try {
+            float[] vector = embeddingModel.embed(content);
+            String vectorStr = vectorToString(vector);
+            jdbcTemplate.update(
+                    "UPDATE conversation_memories SET embedding = ?::vector WHERE id = ?",
+                    vectorStr, memoryId);
+            return vectorStr;
+        } catch (Exception e) {
+            log.error("Failed to embed memory {}: {}", memoryId, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Vector similarity search over conversation_memories.
+     * Returns memory IDs ranked by cosine similarity.
+     */
+    public List<Long> searchMemoriesByVector(String query, String scope, int limit) {
+        try {
+            float[] queryVector = embeddingModel.embed(query);
+            String vectorStr = vectorToString(queryVector);
+            String sql = """
+                    SELECT id, 1 - (embedding <=> ?::vector) AS similarity
+                    FROM conversation_memories
+                    WHERE embedding IS NOT NULL
+                      AND (? IS NULL OR scope = ?)
+                    ORDER BY embedding <=> ?::vector
+                    LIMIT ?
+                    """;
+            return jdbcTemplate.query(sql,
+                    (rs, rowNum) -> rs.getLong("id"),
+                    vectorStr, scope, scope, vectorStr, limit);
+        } catch (Exception e) {
+            log.error("Memory vector search failed: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
      * 将 float[] 转为 pgvector 兼容的字符串格式 "[0.1,0.2,...]"
      */
     private String vectorToString(float[] vector) {
